@@ -1,0 +1,1649 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ImagenHub API",
+    "description": "API services with API key authentication and credit-based usage limits",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.imagenhub.ai/api",
+      "description": "Production"
+    },
+    {
+      "url": "https://staging-api.imagenhub.ai/api",
+      "description": "Staging"
+    },
+    {
+      "url": "http://localhost/api",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/ping": {
+      "get": {
+        "summary": "Test API key",
+        "description": "Returns basic info about the authenticated API key and user tier.\nUseful for testing API key authentication and checking credit/rate limit status.\n",
+        "operationId": "ping",
+        "tags": [
+          "Utility"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "headers": {
+              "X-RateLimit-Limit-Minute": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Request limit per minute (free tier only)"
+              },
+              "X-RateLimit-Remaining-Minute": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Remaining requests in minute window"
+              },
+              "X-RateLimit-Limit-Day": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Request limit per day (free tier only)"
+              },
+              "X-RateLimit-Remaining-Day": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Remaining requests in day window"
+              },
+              "X-Credits-Used": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Credits used by this key"
+              },
+              "X-Credits-Remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Remaining credits (or \"unlimited\")"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PingResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/CreditLimitExceeded"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/providers": {
+      "get": {
+        "summary": "List providers",
+        "description": "Returns all visible AI providers.",
+        "operationId": "listProviders",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Provider"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/models": {
+      "get": {
+        "summary": "List AI models",
+        "description": "Returns all visible AI models with their input schemas.",
+        "operationId": "listModels",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "List of AI models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AiModel"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/{aiModel}": {
+      "get": {
+        "summary": "Get a specific AI model",
+        "description": "Returns a single AI model with its input schema and available providers.\n",
+        "operationId": "getModel",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "aiModel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "AI model ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Model details with providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AiModel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model not found"
+          }
+        }
+      }
+    },
+    "/model-providers": {
+      "get": {
+        "summary": "List model-provider combinations",
+        "description": "Returns visible model-provider combinations. Use query parameters\nto filter by provider or model.\n",
+        "operationId": "listModelProviders",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by provider ID"
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by model ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of model-provider combinations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ModelProvider"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/process": {
+      "post": {
+        "summary": "Process an image generation request",
+        "description": "Submit an image generation request using either a model or a template.\nExactly one of `model_id` or `template_id` must be provided — they are\nmutually exclusive.\n\nWhen using `template_id`, the template's default inputs are merged with\nthe provided inputs (user input takes priority). The model is resolved\nfrom the template automatically.\n\nReturns a task resource. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n",
+        "operationId": "process",
+        "tags": [
+          "Processing"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model_id": {
+                    "type": "integer",
+                    "description": "AI model ID. Required if template_id is not provided.",
+                    "example": 1
+                  },
+                  "template_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Template UUID. Required if model_id is not provided.",
+                    "example": "019d29c5-9663-71c4-b698-9cbf898948d4"
+                  },
+                  "provider": {
+                    "type": "object",
+                    "description": "Optional provider selection",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "example": "integer"
+                      },
+                      "content": {
+                        "type": "string",
+                        "example": "1"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "description": "Typed input fields. Each key maps to an input parameter with\n`type` and `content` properties.\n",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "content": {}
+                  }
+                }
+              },
+              "examples": {
+                "withModel": {
+                  "summary": "Process with model_id",
+                  "value": {
+                    "model_id": 1,
+                    "prompt": {
+                      "type": "string",
+                      "content": "A cat wearing a top hat"
+                    }
+                  }
+                },
+                "withTemplate": {
+                  "summary": "Process with template_id",
+                  "value": {
+                    "template_id": "019d29c5-9663-71c4-b698-9cbf898948d4",
+                    "prompt": {
+                      "type": "string",
+                      "content": "A product photo on white background"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to use the specified template"
+          },
+          "422": {
+            "description": "Validation error (e.g. both model_id and template_id provided)"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/tasks/{task}": {
+      "get": {
+        "summary": "Get task status",
+        "description": "Returns the current status of a task. When status is `success`,\nthe `output` field contains signed URLs to generated images\n(valid for 1 hour).\n",
+        "operationId": "getTask",
+        "tags": [
+          "Processing"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Task UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Task not found"
+          }
+        }
+      }
+    },
+    "/tasks/{task}/stream": {
+      "get": {
+        "summary": "Stream task status (SSE)",
+        "description": "Server-Sent Events stream for real-time task status updates.\nEach event contains a JSON-encoded task object. The stream\ncloses when the task reaches `success` or `error` status.\n",
+        "operationId": "streamTask",
+        "tags": [
+          "Processing"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Task UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE stream of task status updates",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "JSON-encoded task objects as SSE data events"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Task not found"
+          }
+        }
+      }
+    },
+    "/templates": {
+      "get": {
+        "summary": "List templates",
+        "description": "Returns the authenticated user's own templates plus all public\ntemplates. Public templates have `user_id: null` and are\nsystem-provided starting points that any user can run directly.\n",
+        "operationId": "listTemplates",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "s",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search query (filters by name)"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Template"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/templates/{template}": {
+      "get": {
+        "summary": "Get template",
+        "description": "Returns a single template. Accessible if the template is owned\nby the authenticated user or is public.\n",
+        "operationId": "getTemplate",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Template UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Template"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to view this template"
+          },
+          "404": {
+            "description": "Template not found"
+          }
+        }
+      }
+    },
+    "/analytics/requests": {
+      "get": {
+        "summary": "List request history",
+        "description": "Returns paginated request log for the authenticated user's API keys.\nSupports cursor-based pagination, filtering by model, API key, status, and date range.\n",
+        "operationId": "listAnalyticsRequests",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by AI model ID"
+          },
+          {
+            "name": "api_key_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by specific API key ID"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "success",
+                "user_error",
+                "error"
+              ]
+            },
+            "description": "Filter by response status"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start of time range (defaults to 24h ago)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End of time range (defaults to now)"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ended_at",
+                "duration"
+              ]
+            },
+            "description": "Sort field (defaults to ended_at)"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Cursor for pagination (ID of last item from previous page)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated request log",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsRequestsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/analytics/requests/filters": {
+      "get": {
+        "summary": "Get request filter options",
+        "description": "Returns available filter values (model names and provider names)\nfor the authenticated user's request history. Useful for populating\nfilter dropdowns in the UI.\n",
+        "operationId": "getAnalyticsRequestFilters",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available filter values",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "dall-e-3",
+                        "flux-dev",
+                        "stable-diffusion-xl"
+                      ],
+                      "description": "Unique model names from past requests"
+                    },
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "openai",
+                        "fal",
+                        "replicate"
+                      ],
+                      "description": "Unique provider names from past requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/analytics/usage": {
+      "get": {
+        "summary": "Usage and cost aggregation",
+        "description": "Returns time-bucketed cost and request count aggregation\nfor the authenticated user's API keys.\n",
+        "operationId": "getAnalyticsUsage",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by AI model ID"
+          },
+          {
+            "name": "api_key_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by specific API key ID"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start of time range (defaults to 24h ago)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End of time range (defaults to now)"
+          },
+          {
+            "name": "timeframe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "week",
+                "month"
+              ],
+              "default": "day"
+            },
+            "description": "Time bucket granularity"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Time-bucketed usage data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsUsageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/analytics/metrics": {
+      "get": {
+        "summary": "Performance metrics",
+        "description": "Returns time-bucketed performance metrics including request counts,\nerror rates, and latency percentiles (p50, p75, p90) for a specific model.\n",
+        "operationId": "getAnalyticsMetrics",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "AI model ID (required)"
+          },
+          {
+            "name": "api_key_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by specific API key ID"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start of time range (defaults to 24h ago)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End of time range (defaults to now)"
+          },
+          {
+            "name": "timeframe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "week",
+                "month"
+              ],
+              "default": "day"
+            },
+            "description": "Time bucket granularity"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Performance metrics with percentiles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsMetricsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKeyAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key (sk_live_... or sk_test_...) obtained from the dashboard"
+      },
+      "jwtAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from /auth/login"
+      }
+    },
+    "schemas": {
+      "Provider": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "OpenAI"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "OpenAI API provider"
+          }
+        }
+      },
+      "AiModel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "dall-e-3"
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "DALL-E 3"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "DALL-E 3 image generation model"
+          },
+          "thumbnail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "https://example.com/thumbnails/dall-e-3.png"
+          },
+          "input": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "JSON schema describing model input parameters"
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": 1
+                },
+                "name": {
+                  "type": "string",
+                  "example": "openai"
+                },
+                "display_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "example": "OpenAI"
+                },
+                "description": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "endpoint": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "example": "/v1/images/generations"
+                },
+                "cost": {
+                  "type": "string",
+                  "example": "0.040000"
+                },
+                "extra_input": {
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "ModelProvider": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "ai_model": {
+            "$ref": "#/components/schemas/AiModel"
+          },
+          "endpoint": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "/v1/images/generations"
+          },
+          "cost": {
+            "type": "string",
+            "example": "0.040000",
+            "description": "Cost per request"
+          }
+        }
+      },
+      "PingResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "pong"
+          },
+          "key": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "example": "Production API Key"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "live",
+                  "test"
+                ],
+                "example": "live"
+              },
+              "credit_limit": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "example": 1000
+              },
+              "credits_used": {
+                "type": "number",
+                "example": 150.5
+              },
+              "credits_remaining": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "example": 849.5
+              }
+            }
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "tier": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "paid"
+                ],
+                "example": "free"
+              }
+            }
+          }
+        }
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "019d29c6-a50d-7340-a521-22ef5d1a4bb6"
+          },
+          "user_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "model_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "template_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "019d29c5-9663-71c4-b698-9cbf898948d4"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "processing",
+              "success",
+              "error"
+            ],
+            "example": "created"
+          },
+          "input": {
+            "type": "object",
+            "description": "Processed input sent to the provider"
+          },
+          "output": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "description": "Signed URLs to generated images (only present on success)",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Template": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "019d29c5-9663-71c4-b698-9cbf898948d4"
+          },
+          "user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Owner user ID, or null for public templates",
+            "example": null
+          },
+          "name": {
+            "type": "string",
+            "example": "Product Photo Enhancement"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Enhance product photos with professional lighting"
+          },
+          "default_inputs": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Pre-filled input values merged with user input at processing time"
+          },
+          "extra_input": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Provider-specific extra input overrides, keyed by provider name"
+          },
+          "model": {
+            "$ref": "#/components/schemas/AiModel"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer",
+            "example": 1
+          },
+          "last_page": {
+            "type": "integer",
+            "example": 3
+          },
+          "per_page": {
+            "type": "integer",
+            "example": 15
+          },
+          "total": {
+            "type": "integer",
+            "example": 42
+          }
+        }
+      },
+      "RequestLogItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 42
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "flux-dev"
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "fal"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "success",
+              "user_error",
+              "error"
+            ],
+            "example": "success"
+          },
+          "status_code": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 200
+          },
+          "cost": {
+            "type": "string",
+            "example": "0.000000"
+          },
+          "duration": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2.3410",
+            "description": "Request duration in seconds"
+          },
+          "sent_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "ended_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AnalyticsRequestsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequestLogItem"
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "first": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "last": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "prev": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "next": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "per_page": {
+                "type": "integer"
+              },
+              "next_cursor": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Cursor for next page (pass as cursor parameter)"
+              },
+              "prev_cursor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "AnalyticsUsageResponse": {
+        "type": "object",
+        "properties": {
+          "time_series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bucket": {
+                  "type": "string",
+                  "example": "2026-03-17"
+                },
+                "request_count": {
+                  "type": "integer",
+                  "example": 42
+                },
+                "total_cost": {
+                  "type": "number",
+                  "example": 0
+                }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "total_requests": {
+                "type": "integer",
+                "example": 150
+              },
+              "total_cost": {
+                "type": "number",
+                "example": 0
+              }
+            }
+          }
+        }
+      },
+      "AnalyticsMetricsResponse": {
+        "type": "object",
+        "properties": {
+          "time_series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bucket": {
+                  "type": "string",
+                  "example": "2026-03-17"
+                },
+                "request_count": {
+                  "type": "integer",
+                  "example": 42
+                },
+                "success_count": {
+                  "type": "integer",
+                  "example": 38
+                },
+                "user_error_count": {
+                  "type": "integer",
+                  "example": 3
+                },
+                "error_count": {
+                  "type": "integer",
+                  "example": 1
+                }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "request_count": {
+                "type": "integer",
+                "example": 150
+              },
+              "success_count": {
+                "type": "integer",
+                "example": 140
+              },
+              "user_error_count": {
+                "type": "integer",
+                "example": 7
+              },
+              "error_count": {
+                "type": "integer",
+                "example": 3
+              },
+              "p50_duration": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "example": 1.3,
+                "description": "Median request duration in seconds"
+              },
+              "p75_duration": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "example": 2.4
+              },
+              "p90_duration": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "example": 5
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Authentication required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Unauthenticated."
+                }
+              }
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Too many requests (free tier only)",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Seconds until rate limit resets"
+          },
+          "X-RateLimit-Limit": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Request limit"
+          },
+          "X-RateLimit-Remaining": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Remaining requests"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "example": "rate_limit_exceeded"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Rate limit exceeded for minute window."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "CreditLimitExceeded": {
+        "description": "Credit limit exceeded for API key",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "example": "credit_limit_exceeded"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Credit limit exceeded for this API key."
+                    },
+                    "credit_limit": {
+                      "type": "number",
+                      "example": 1000
+                    },
+                    "credits_used": {
+                      "type": "number",
+                      "example": 1000
+                    },
+                    "resets_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "example": "2026-03-01T00:00:00+00:00"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
