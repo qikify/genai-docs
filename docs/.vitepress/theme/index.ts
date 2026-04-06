@@ -7,7 +7,14 @@ import './custom.css'
 export default {
   extends: DefaultTheme,
   enhanceApp(ctx) {
-    const openapi = useOpenapi({ spec })
+    const openapi = useOpenapi({
+      spec,
+      config: {
+        operation: {
+          hiddenSlots: ['playground'],
+        },
+      },
+    })
     theme.enhanceApp({ ...ctx, openapi })
   },
 }
