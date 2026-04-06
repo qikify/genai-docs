@@ -36,14 +36,14 @@
 
 /* ---- Light Theme Brand ---- */
 :root {
-  --vp-c-brand-1: #d97706;
-  --vp-c-brand-2: #b45309;
-  --vp-c-brand-3: #92400e;
-  --vp-c-brand-soft: rgba(217, 119, 6, 0.12);
+  --vp-c-brand-1: #00cc33;
+  --vp-c-brand-2: #00b32d;
+  --vp-c-brand-3: #009926;
+  --vp-c-brand-soft: rgba(0, 230, 57, 0.12);
 
-  --vp-button-brand-bg: #d97706;
-  --vp-button-brand-hover-bg: #b45309;
-  --vp-button-brand-active-bg: #92400e;
+  --vp-button-brand-bg: #00e639;
+  --vp-button-brand-hover-bg: #00cc33;
+  --vp-button-brand-active-bg: #009926;
   --vp-button-brand-border: transparent;
   --vp-button-brand-hover-border: transparent;
   --vp-button-brand-text: #fff;
@@ -51,15 +51,15 @@
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(
     135deg,
-    #f59e0b 0%,
-    #ef4444 50%,
-    #f59e0b 100%
+    #00e639 0%,
+    #16a34a 50%,
+    #00e639 100%
   );
 
   --vp-home-hero-image-background-image: linear-gradient(
     135deg,
-    rgba(245, 158, 11, 0.2) 0%,
-    rgba(239, 68, 68, 0.1) 100%
+    rgba(0, 230, 57, 0.2) 0%,
+    rgba(22, 163, 74, 0.1) 100%
   );
   --vp-home-hero-image-filter: blur(56px);
 }
@@ -71,10 +71,10 @@
   --vp-c-bg-elv: #131318;
   --vp-c-bg-soft: #131318;
 
-  --vp-c-brand-1: #f59e0b;
-  --vp-c-brand-2: #eab308;
-  --vp-c-brand-3: #ca8a04;
-  --vp-c-brand-soft: rgba(245, 158, 11, 0.1);
+  --vp-c-brand-1: #00e639;
+  --vp-c-brand-2: #00cc33;
+  --vp-c-brand-3: #00b32d;
+  --vp-c-brand-soft: rgba(0, 230, 57, 0.1);
 
   --vp-c-text-1: rgba(255, 255, 255, 0.92);
   --vp-c-text-2: rgba(255, 255, 255, 0.52);
@@ -84,9 +84,9 @@
   --vp-c-divider: rgba(255, 255, 255, 0.04);
   --vp-c-gutter: #09090b;
 
-  --vp-button-brand-bg: #f59e0b;
-  --vp-button-brand-hover-bg: #eab308;
-  --vp-button-brand-active-bg: #ca8a04;
+  --vp-button-brand-bg: #00e639;
+  --vp-button-brand-hover-bg: #00cc33;
+  --vp-button-brand-active-bg: #00b32d;
   --vp-button-brand-text: #09090b;
 
   --vp-c-default-1: rgba(255, 255, 255, 0.92);
@@ -98,10 +98,10 @@
 
   --vp-home-hero-name-background: linear-gradient(
     135deg,
-    #fbbf24 0%,
-    #f59e0b 30%,
-    #ef4444 70%,
-    #fbbf24 100%
+    #00e639 0%,
+    #00cc33 30%,
+    #16a34a 70%,
+    #00e639 100%
   );
 }
 
@@ -210,7 +210,7 @@
 }
 
 .dark .VPFeature:hover {
-  box-shadow: 0 8px 32px rgba(245, 158, 11, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 230, 57, 0.06);
 }
 
 .VPFeature .title {
