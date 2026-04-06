@@ -68,7 +68,7 @@ import {
   withDirectives,
   withKeys,
   withModifiers
-} from "./chunk-SHKULH5Y.js";
+} from "./chunk-VEPJHAHP.js";
 import "./chunk-PZ5AY32C.js";
 
 // node_modules/vitepress-openapi/dist/useOpenapi-B4Uu-BLL.js

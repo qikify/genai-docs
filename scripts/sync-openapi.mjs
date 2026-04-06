@@ -1,7 +1,12 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import yaml from 'js-yaml'
+import { configDotenv } from 'dotenv'
 
-const src = new URL('../../api/openapi.yaml', import.meta.url)
+configDotenv()
+
+const url = `../../${process.env.API_DIRECTORY ?? 'api'}/openapi.yaml`
+
+const src = new URL(url, import.meta.url)
 const dest = new URL('../docs/public/openapi.json', import.meta.url)
 
 mkdirSync(new URL('../docs/public', import.meta.url), { recursive: true })

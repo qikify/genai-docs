@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-"sync:api": "node scripts/sync-openapi.mjs",
+    "sync:api": "node scripts/sync-openapi.mjs",
     "docs:dev": "npm run sync:api && vitepress dev docs",
     "docs:build": "npm run sync:api && vitepress build docs",
     "docs:preview": "vitepress preview docs"
@@ -13,5 +13,8 @@
     "vitepress": "^2.0.0-alpha.16",
     "vitepress-openapi": "^0.1.15",
     "vue": "^3.5.29"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.1"
   }
 }

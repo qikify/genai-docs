@@ -522,7 +522,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Template"
+                        "$ref": "#/components/schemas/TemplateSummary"
                       }
                     },
                     "meta": {
@@ -1240,6 +1240,15 @@
             ],
             "example": "Enhance product photos with professional lighting"
           },
+          "thumbnail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "Signed URL to the WebP thumbnail image",
+            "example": "https://cdn.example.com/thumbnails/templates/abc.webp?signature=..."
+          },
           "default_inputs": {
             "type": [
               "object",
@@ -1256,6 +1265,72 @@
           },
           "model": {
             "$ref": "#/components/schemas/AiModel"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TemplateSummary": {
+        "type": "object",
+        "description": "Lightweight template representation for listings (excludes default_inputs, extra_input, and full model details)",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "019d29c5-9663-71c4-b698-9cbf898948d4"
+          },
+          "user_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Owner user ID, or null for public templates",
+            "example": null
+          },
+          "name": {
+            "type": "string",
+            "example": "Product Photo Enhancement"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Enhance product photos with professional lighting"
+          },
+          "thumbnail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "Signed URL to the WebP thumbnail image"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 1
+              },
+              "name": {
+                "type": "string",
+                "example": "flux-schnell"
+              },
+              "display_name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "Flux Schnell"
+              }
+            }
           },
           "created_at": {
             "type": "string",
