@@ -146,6 +146,25 @@
         "security": [],
         "parameters": [
           {
+            "name": "s",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Free-text search on model name and display name"
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "black-forest-labs"
+            },
+            "description": "Filter by owner slug (Replicate convention)"
+          },
+          {
             "name": "sort_by",
             "in": "query",
             "required": false,
@@ -196,24 +215,35 @@
         }
       }
     },
-    "/models/{aiModel}": {
+    "/models/{owner}/{name}": {
       "get": {
-        "summary": "Get a specific AI model",
-        "description": "Returns a single AI model with its input schema and available providers.\n",
-        "operationId": "getModel",
+        "summary": "Get a specific AI model by owner + name",
+        "description": "Canonical lookup using the (owner, name) pair. Same response shape as\n`/models/{aiModel}`. Model names may contain a `/edit` variant suffix,\nwhich is captured as part of `{name}` (e.g. `/models/openai/gpt-image-1/edit`).\n",
+        "operationId": "getModelByOwnerAndName",
         "tags": [
           "Catalog"
         ],
         "security": [],
         "parameters": [
           {
-            "name": "aiModel",
+            "name": "owner",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "example": "black-forest-labs"
             },
-            "description": "AI model ID"
+            "description": "Owner slug (Replicate convention)"
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "flux-1-kontext-pro"
+            },
+            "description": "Model name (may contain `/edit` suffix)"
           }
         ],
         "responses": {
@@ -399,11 +429,223 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "402": {
+            "$ref": "#/components/responses/InsufficientCredits"
+          },
           "403": {
             "description": "Not authorized to use the specified template"
           },
           "422": {
             "description": "Validation error (e.g. both model_id and template_id provided)"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/run/{provider_name}/{model_name}": {
+      "post": {
+        "summary": "Run a model asynchronously",
+        "description": "Submit a generation request by specifying the provider and model by name\nin the URL path. The job is queued and processed asynchronously.\n\nReturns a task resource immediately. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
+        "operationId": "runModel",
+        "tags": [
+          "Processing"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The provider's name (slug).",
+            "example": "replicate"
+          },
+          {
+            "name": "model_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The model's name. May contain slashes.",
+            "example": "black-forest-labs/flux-schnell"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "description": "Dynamic input fields defined by the model's input schema.\nKeys and types vary per model.\n"
+                }
+              },
+              "example": {
+                "prompt": "A cat wearing a top hat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created and queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/InsufficientCredits"
+          },
+          "404": {
+            "description": "Provider or model not found"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/run/sync/{provider_name}/{model_name}": {
+      "post": {
+        "summary": "Run a model synchronously",
+        "description": "Submit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\n\nUse this for low-latency integrations where polling is not practical.\nFor long-running models, prefer the async `POST /run/{provider_name}/{model_name}`.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
+        "operationId": "runModelSync",
+        "tags": [
+          "Processing"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The provider's name (slug).",
+            "example": "replicate"
+          },
+          {
+            "name": "model_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The model's name. May contain slashes.",
+            "example": "black-forest-labs/flux-schnell"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "description": "Dynamic input fields defined by the model's input schema.\nKeys and types vary per model.\n"
+                }
+              },
+              "example": {
+                "prompt": "A cat wearing a top hat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generation completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "The ID of the completed task."
+                    },
+                    "images": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "description": "Public URLs of the generated output images."
+                    }
+                  }
+                },
+                "example": {
+                  "task_id": "018f1a2b-3c4d-7e8f-9a0b-1c2d3e4f5a6b",
+                  "images": [
+                    "https://cdn.example.com/output/abc123.png"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/InsufficientCredits"
+          },
+          "404": {
+            "description": "Provider or model not found"
+          },
+          "422": {
+            "description": "Validation error or task processing failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Error detail from the provider."
+                    }
+                  }
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -460,6 +702,66 @@
           },
           "404": {
             "description": "Task not found"
+          }
+        }
+      }
+    },
+    "/tasks/{task}/download": {
+      "get": {
+        "summary": "Download task output image",
+        "description": "Streams a single output image of a successful task as a file\ndownload (`Content-Disposition: attachment`). Use `index` to pick\namong multiple outputs (default `0`).\n",
+        "operationId": "downloadTaskOutput",
+        "tags": [
+          "Processing"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Task UUID"
+          },
+          {
+            "name": "index",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Zero-based index of the output image to download"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image file stream",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Task or output image not found"
           }
         }
       }
@@ -538,7 +840,7 @@
               "type": "string",
               "maxLength": 255
             },
-            "description": "Search query (filters by name)"
+            "description": "Search query — filters by name (partial match), or if the value is a valid template UUID, returns an exact match by template ID"
           },
           {
             "name": "ownership",
@@ -593,13 +895,27 @@
             "description": "Sort direction"
           },
           {
-            "name": "cursor",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
             },
-            "description": "Cursor for pagination (from previous response's next_cursor)"
+            "description": "Page number"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 15
+            },
+            "description": "Items per page"
           }
         ],
         "responses": {
@@ -617,14 +933,10 @@
                       }
                     },
                     "links": {
-                      "$ref": "#/components/schemas/CursorPaginationLinks"
+                      "$ref": "#/components/schemas/PaginationLinks"
                     },
                     "meta": {
-                      "$ref": "#/components/schemas/CursorPaginationMeta"
-                    },
-                    "total": {
-                      "type": "integer",
-                      "description": "Total number of matching templates"
+                      "$ref": "#/components/schemas/PaginationMeta"
                     }
                   }
                 }
@@ -1387,6 +1699,116 @@
           }
         }
       }
+    },
+    "/credits/balance": {
+      "get": {
+        "summary": "Get credit balance",
+        "description": "Returns the current credit balance for the authenticated user.",
+        "operationId": "getCreditBalance",
+        "tags": [
+          "Credits"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current credit balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "balance": {
+                          "type": "integer",
+                          "example": 1234
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/credits/transactions": {
+      "get": {
+        "summary": "List credit transactions",
+        "description": "Returns a cursor-paginated list of credit ledger entries for the authenticated user.\nOptionally filter by one or more transaction types via repeated `types[]` query params.\n",
+        "operationId": "listCreditTransactions",
+        "tags": [
+          "Credits"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "types[]",
+            "in": "query",
+            "required": false,
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/CreditTransactionType"
+              }
+            },
+            "description": "Filter by one or more transaction types. Repeat the parameter to pass\nmultiple values (e.g. `?types[]=subscription_deposit&types[]=topup`).\nOmit to return the full ledger.\n"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "Items per page"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cursor for pagination (from previous response's next_cursor)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated credit transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditTransactionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1474,6 +1896,37 @@
             ],
             "description": "JSON schema describing model input parameters"
           },
+          "owner": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Publisher / trainer of the model. Slug follows the Replicate convention.",
+            "properties": {
+              "slug": {
+                "type": "string",
+                "example": "black-forest-labs"
+              },
+              "display_name": {
+                "type": "string",
+                "example": "Black Forest Labs"
+              },
+              "logo_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "credit_cost": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 20,
+            "description": "Credits charged per generation for this model"
+          },
           "providers": {
             "type": "array",
             "items": {
@@ -1506,10 +1959,6 @@
                     "null"
                   ],
                   "example": "/v1/images/generations"
-                },
-                "cost": {
-                  "type": "string",
-                  "example": "0.040000"
                 },
                 "extra_input": {
                   "type": [
@@ -1545,11 +1994,6 @@
               "null"
             ],
             "example": "/v1/images/generations"
-          },
-          "cost": {
-            "type": "string",
-            "example": "0.040000",
-            "description": "Cost per request"
           }
         }
       },
@@ -1899,6 +2343,130 @@
           }
         }
       },
+      "CreditTransactionType": {
+        "type": "string",
+        "enum": [
+          "subscription_deposit",
+          "topup",
+          "generation_charge",
+          "refund",
+          "partner_deposit",
+          "adjustment"
+        ],
+        "description": "Ledger entry type. `generation_charge` and `refund` pair with each task;\nthe remaining values represent billing events (money in/out).\n"
+      },
+      "CreditTransaction": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 42
+          },
+          "type": {
+            "$ref": "#/components/schemas/CreditTransactionType"
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Signed credit amount (positive = added, negative = spent)",
+            "example": -25
+          },
+          "balance_after": {
+            "type": "integer",
+            "description": "User's credit balance immediately after this entry",
+            "example": 975
+          },
+          "metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Contextual fields (e.g. task_id, model, plan, reason)"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreditTransactionsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreditTransaction"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorPaginationMeta"
+          }
+        }
+      },
+      "PaginationLinks": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer",
+            "example": 1
+          },
+          "last_page": {
+            "type": "integer",
+            "example": 3
+          },
+          "per_page": {
+            "type": "integer",
+            "example": 15
+          },
+          "total": {
+            "type": "integer",
+            "example": 42
+          },
+          "from": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "to": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
       "RequestLogItem": {
         "type": "object",
         "properties": {
@@ -1987,10 +2555,6 @@
           },
           "meta": {
             "$ref": "#/components/schemas/CursorPaginationMeta"
-          },
-          "total": {
-            "type": "integer",
-            "description": "Total number of matching records"
           }
         }
       },
@@ -2204,6 +2768,41 @@
                       ],
                       "format": "date-time",
                       "example": "2026-03-01T00:00:00+00:00"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "InsufficientCredits": {
+        "description": "User does not have enough credits to dispatch this request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "example": "insufficient_credits"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Insufficient credit balance."
+                    },
+                    "balance": {
+                      "type": "integer",
+                      "description": "Current user credit balance",
+                      "example": 12
+                    },
+                    "cost": {
+                      "type": "integer",
+                      "description": "Credit cost the request would have charged",
+                      "example": 50
                     }
                   }
                 }
