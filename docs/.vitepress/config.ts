@@ -26,8 +26,9 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
+      { text: 'Teeinblue', link: '/teeinblue/', activeMatch: '/teeinblue/' },
       { text: 'API Reference', link: '/api/', activeMatch: '/api/' },
-{ text: 'imagenhub.ai', link: 'https://imagenhub.ai', target: '_blank' },
+      { text: 'imagenhub.ai', link: 'https://imagenhub.ai', target: '_blank' },
     ],
 
     sidebar: {
@@ -54,6 +55,19 @@ export default defineConfig({
             { text: 'Analytics', link: '/guide/analytics' },
             { text: 'Bring Your Own Keys', link: '/guide/byok' },
             { text: 'Rate Limits & Credits', link: '/guide/rate-limits' },
+          ],
+        },
+      ],
+
+      '/teeinblue/': [
+        {
+          text: 'Teeinblue Integration',
+          items: [
+            { text: 'Overview', link: '/teeinblue/' },
+            { text: 'Creating the API Keys', link: '/teeinblue/api-keys' },
+            { text: 'Managing Model Access', link: '/teeinblue/model-access' },
+            { text: 'Templates', link: '/teeinblue/templates' },
+            { text: 'Integrating with Teeinblue', link: '/teeinblue/integration' },
           ],
         },
       ],
