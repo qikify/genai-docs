@@ -5,11 +5,11 @@ Once your template is ready, hook it into Teeinblue from the Artwork Editor.
 1. In the Teeinblue Artwork Editor, create a new **Photo Upload Layer**.
 2. Under the **Gen AI Effect** section, select **[ImagenHub] AI Effect**.
 
-   ![Selecting ImagenHub AI Effect on a Photo Upload Layer](/teeinblue/image16.png)
+   ![Selecting ImagenHub AI Effect on a Photo Upload Layer](./assets/image16.png)
 
 3. You'll see the list of all templates you've created.
 
-   ![Template picker showing available templates](/teeinblue/image17.png)
+   ![Template picker showing available templates](./assets/image17.png)
 
 That's it — your setup is complete.
 

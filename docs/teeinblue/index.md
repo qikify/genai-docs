@@ -2,7 +2,7 @@
 
 ImagenHub is a standalone AI model management application. While it features native integration with Teeinblue, it functions independently to manage and optimize AI image generation workflows.
 
-![ImagenHub overview](/teeinblue/image1.png)
+![ImagenHub overview](./assets/image1.png)
 
 It provides advanced control over AI models through the following features:
 

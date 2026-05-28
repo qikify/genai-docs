@@ -6,13 +6,13 @@ You have two primary ways to power your AI features: using your own provider API
 
 Link your personal provider API keys to maintain direct control over your usage, billing, and model preferences.
 
-![Bring Your Own Key configuration](/teeinblue/image6.png)
+![Bring Your Own Key configuration](./assets/image6.png)
 
 ## ImagenHub Subscription
 
 Opt for our subscription service to get instant, pre-configured access to our full library of models without needing to manage individual credentials.
 
-![ImagenHub subscription view](/teeinblue/image7.png)
+![ImagenHub subscription view](./assets/image7.png)
 
 ## Built-in Fail-Safe
 
