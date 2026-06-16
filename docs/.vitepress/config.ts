@@ -27,6 +27,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
       { text: 'Teeinblue', link: '/teeinblue/', activeMatch: '/teeinblue/' },
+      { text: 'MCP', link: '/mcp/', activeMatch: '/mcp/' },
       { text: 'API Reference', link: '/api/', activeMatch: '/api/' },
       { text: 'imagenhub.ai', link: 'https://imagenhub.ai', target: '_blank' },
     ],
@@ -68,6 +69,17 @@ export default defineConfig({
             { text: 'Managing Model Access', link: '/teeinblue/model-access' },
             { text: 'Templates', link: '/teeinblue/templates' },
             { text: 'Integrating with Teeinblue', link: '/teeinblue/integration' },
+          ],
+        },
+      ],
+
+      '/mcp/': [
+        {
+          text: 'MCP Server',
+          items: [
+            { text: 'Overview', link: '/mcp/' },
+            { text: 'Connecting a Client', link: '/mcp/connecting' },
+            { text: 'Tool Reference', link: '/mcp/tools' },
           ],
         },
       ],
