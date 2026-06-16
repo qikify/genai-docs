@@ -444,10 +444,10 @@
         }
       }
     },
-    "/run/{model_name}": {
+    "/run/{provider_name}/{model_name}": {
       "post": {
         "summary": "Run a model asynchronously",
-        "description": "Submit a generation request by specifying the model by name in the URL path.\nThe job is queued and processed asynchronously. The provider is selected\nautomatically.\n\nReturns a task resource immediately. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
+        "description": "Submit a generation request by specifying the provider and model by name\nin the URL path. The job is queued and processed asynchronously.\n\nReturns a task resource immediately. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
         "operationId": "runModel",
         "tags": [
           "Processing"
@@ -461,6 +461,16 @@
           }
         ],
         "parameters": [
+          {
+            "name": "provider_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The provider's name (slug).",
+            "example": "replicate"
+          },
           {
             "name": "model_name",
             "in": "path",
@@ -522,10 +532,10 @@
         }
       }
     },
-    "/run/sync/{model_name}": {
+    "/run/sync/{provider_name}/{model_name}": {
       "post": {
         "summary": "Run a model synchronously",
-        "description": "Submit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\n\nUse this for low-latency integrations where polling is not practical.\nFor long-running models, prefer the async `POST /run/{model_name}`.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
+        "description": "Submit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\n\nUse this for low-latency integrations where polling is not practical.\nFor long-running models, prefer the async `POST /run/{provider_name}/{model_name}`.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
         "operationId": "runModelSync",
         "tags": [
           "Processing"
@@ -539,6 +549,16 @@
           }
         ],
         "parameters": [
+          {
+            "name": "provider_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The provider's name (slug).",
+            "example": "replicate"
+          },
           {
             "name": "model_name",
             "in": "path",
@@ -1473,9 +1493,9 @@
                         "type": "string"
                       },
                       "example": [
-                        "openai/dall-e-3",
-                        "black-forest-labs/flux-dev",
-                        "stability-ai/stable-diffusion-xl"
+                        "dall-e-3",
+                        "flux-dev",
+                        "stable-diffusion-xl"
                       ],
                       "description": "Unique model names from past requests"
                     },
@@ -1835,7 +1855,7 @@
           },
           "name": {
             "type": "string",
-            "example": "openai/dall-e-3"
+            "example": "dall-e-3"
           },
           "display_name": {
             "type": [
@@ -2242,7 +2262,7 @@
               },
               "name": {
                 "type": "string",
-                "example": "black-forest-labs/flux-schnell"
+                "example": "flux-schnell"
               },
               "display_name": {
                 "type": [
@@ -2464,7 +2484,7 @@
               "string",
               "null"
             ],
-            "example": "black-forest-labs/flux-dev"
+            "example": "flux-dev"
           },
           "provider": {
             "type": [
