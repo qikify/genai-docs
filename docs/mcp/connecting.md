@@ -7,7 +7,6 @@ The MCP server is a single endpoint. Point your MCP client at it, add your API k
 | Environment | URL |
 |---|---|
 | Production | `https://api.imagenhub.ai/mcp/imagenhub` |
-| Staging | `https://staging-api.imagenhub.ai/mcp/imagenhub` |
 
 The transport is Streamable HTTP — the client sends requests and reads responses over this one URL.
 

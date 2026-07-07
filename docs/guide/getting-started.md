@@ -24,8 +24,6 @@ Every request is routed to an AI provider, processed, and the generated images a
 | Environment | URL |
 |-------------|-----|
 | Production  | `https://api.imagenhub.ai/api` |
-| Staging     | `https://staging-api.imagenhub.ai/api` |
-| Local       | `http://localhost/api` |
 
 ## Next steps
 
