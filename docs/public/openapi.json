@@ -12,14 +12,6 @@
     {
       "url": "https://api.imagenhub.ai/api",
       "description": "Production"
-    },
-    {
-      "url": "https://staging-api.imagenhub.ai/api",
-      "description": "Staging"
-    },
-    {
-      "url": "http://localhost/api",
-      "description": "Local development"
     }
   ],
   "paths": {
@@ -444,10 +436,10 @@
         }
       }
     },
-    "/run/{provider_name}/{model_name}": {
+    "/run/{model_name}": {
       "post": {
         "summary": "Run a model asynchronously",
-        "description": "Submit a generation request by specifying the provider and model by name\nin the URL path. The job is queued and processed asynchronously.\n\nReturns a task resource immediately. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
+        "description": "Submit a generation request by specifying the model by name in the URL path.\nThe job is queued and processed asynchronously. The provider is selected\nautomatically.\n\nReturns a task resource immediately. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
         "operationId": "runModel",
         "tags": [
           "Processing"
@@ -461,16 +453,6 @@
           }
         ],
         "parameters": [
-          {
-            "name": "provider_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The provider's name (slug).",
-            "example": "replicate"
-          },
           {
             "name": "model_name",
             "in": "path",
@@ -532,10 +514,10 @@
         }
       }
     },
-    "/run/sync/{provider_name}/{model_name}": {
+    "/run/sync/{model_name}": {
       "post": {
         "summary": "Run a model synchronously",
-        "description": "Submit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\n\nUse this for low-latency integrations where polling is not practical.\nFor long-running models, prefer the async `POST /run/{provider_name}/{model_name}`.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
+        "description": "Submit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\n\nUse this for low-latency integrations where polling is not practical.\nFor long-running models, prefer the async `POST /run/{model_name}`.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
         "operationId": "runModelSync",
         "tags": [
           "Processing"
@@ -549,16 +531,6 @@
           }
         ],
         "parameters": [
-          {
-            "name": "provider_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The provider's name (slug).",
-            "example": "replicate"
-          },
           {
             "name": "model_name",
             "in": "path",
@@ -649,6 +621,140 @@
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/tasks": {
+      "get": {
+        "summary": "List tasks",
+        "description": "Returns the authenticated user's tasks, most recent first. Filter by\nstatus, template, or model to review a batch. Returns a lightweight\nprojection — use `GET /tasks/{task}` for a task's inputs and output\nimage URLs.\n",
+        "operationId": "listTasks",
+        "tags": [
+          "Processing"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "created",
+                "processing",
+                "success",
+                "error"
+              ]
+            },
+            "description": "Filter by task status"
+          },
+          {
+            "name": "template_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Filter by template UUID"
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by AI model ID"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "created_at",
+                "updated_at"
+              ],
+              "default": "created_at"
+            },
+            "description": "Sort field"
+          },
+          {
+            "name": "sort_direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            },
+            "description": "Sort direction"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 15
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TaskSummary"
+                      }
+                    },
+                    "links": {
+                      "$ref": "#/components/schemas/PaginationLinks"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -1493,9 +1599,9 @@
                         "type": "string"
                       },
                       "example": [
-                        "dall-e-3",
-                        "flux-dev",
-                        "stable-diffusion-xl"
+                        "openai/dall-e-3",
+                        "black-forest-labs/flux-dev",
+                        "stability-ai/stable-diffusion-xl"
                       ],
                       "description": "Unique model names from past requests"
                     },
@@ -1855,7 +1961,7 @@
           },
           "name": {
             "type": "string",
-            "example": "dall-e-3"
+            "example": "openai/dall-e-3"
           },
           "display_name": {
             "type": [
@@ -2217,6 +2323,69 @@
           }
         }
       },
+      "TaskSummary": {
+        "type": "object",
+        "description": "Lightweight task representation for listings (excludes inputs and resolved output URLs; use `GET /tasks/{task}` for those)",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "processing",
+              "success",
+              "error"
+            ]
+          },
+          "template_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Template the task was generated from, or null for direct model runs"
+          },
+          "credit_cost": {
+            "type": "integer",
+            "description": "Credits charged for this task"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Error message when status is `error`"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "display_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "TemplateSummary": {
         "type": "object",
         "description": "Lightweight template representation for listings (excludes default_inputs, extra_input, and full model details)",
@@ -2262,7 +2431,7 @@
               },
               "name": {
                 "type": "string",
-                "example": "flux-schnell"
+                "example": "black-forest-labs/flux-schnell"
               },
               "display_name": {
                 "type": [
@@ -2484,7 +2653,7 @@
               "string",
               "null"
             ],
-            "example": "flux-dev"
+            "example": "black-forest-labs/flux-dev"
           },
           "provider": {
             "type": [
