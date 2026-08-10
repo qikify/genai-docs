@@ -40,13 +40,13 @@ This is really what Auto was built for. A Teeinblue artwork library is full of l
 
 ![A Teeinblue artwork library showing artworks at different ratios — portrait, square, and wide](./assets/dur-artwork-ratios.png)
 
-With Auto, they can all share **one** template. Each layer already knows its own dimensions, so each generation comes back in that layer's shape — no duplicates to maintain.
+With Auto, they can all share **one** template — no per-shape duplicates to maintain. The shape each generation comes back in is decided by the layer you set up, not the template.
 
-Setting it up is quick: open the Photo Upload layer's personalization settings and attach your ImagenHub template under **ImagenHub Template**. The layer's own size — shown here as `2048x2048` — is what Auto snaps to.
+The important part is that you still set the ratio yourself, once, on the layer. In the Teeinblue artwork editor, create a **Photo Upload** layer at the ratio you want that artwork to be — a tall layer for a portrait piece, a square one for a square piece. Then open its personalization settings and attach your ImagenHub template under **ImagenHub Template**.
 
 ![A Teeinblue layer's personalization settings with an ImagenHub template attached under Image effects](./assets/dur-layer-template.png)
 
-As long as the template's ratio is **Auto**, that's it. The layer drives the output, and you never touch a per-shape copy again.
+From there it's automatic. When a customer uploads their own photo into that layer, Auto snaps it to the nearest ratio the model supports for that layer's shape — so whatever they upload comes out matching the artwork. You build the layer at the right ratio once; every customer's upload falls into line after that.
 
 ## Good to know
 
