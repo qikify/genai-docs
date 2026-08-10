@@ -59,6 +59,12 @@ export default defineConfig({
             { text: 'Rate Limits & Credits', link: '/guide/rate-limits' },
           ],
         },
+        {
+          text: 'Use Cases',
+          items: [
+            { text: 'Dynamic Upload Ratio', link: '/guide/dynamic-upload-ratio' },
+          ],
+        },
       ],
 
       '/teeinblue/': [
