@@ -74,7 +74,6 @@ During a secret rotation the header carries **two** signatures, one per live sec
 | `provider_key.insufficient_funds` | Account alert | One of your own provider keys was rejected for funds. Generations routed to that provider fail until you top it up. |
 | `provider_key.invalid` | Account alert | One of your own provider keys was rejected as invalid. Generations routed to that provider fail until you replace it. |
 | `credits.exhausted` | Account alert | Your balance can no longer cover a generation, so new requests are refused. |
-| `subscription.past_due` | Account alert | A subscription payment did not go through. The account is suspended if it stays unresolved. |
 
 Event types are permanent. New ones may be added, so treat an unfamiliar `type` as something to ignore rather than an error.
 
@@ -109,8 +108,7 @@ Each alert reports a condition on your account. What `data` carries, and what cl
 |---|---|---|---|
 | `provider_key.insufficient_funds` | `provider`, `url` | Your own key for that provider has no funds left. | Top up that provider account. Clears on the first generation that succeeds with the key. |
 | `provider_key.invalid` | `provider`, `url` | Your own key for that provider was rejected as invalid. | Replace the key in the portal. Clears on the first generation that succeeds with it. |
-| `credits.exhausted` | `balance`, `url` | Your ImagenHub balance can no longer cover a generation, so requests are refused. | Buy credits, or wait for the monthly quota to renew. |
-| `subscription.past_due` | `url` | A subscription payment did not go through. | Update the payment method. Clears when a payment succeeds. |
+| `credits.exhausted` | `balance`, `url` | A generation was refused because your ImagenHub balance could not cover it. | Buy credits, or wait for the monthly quota to renew. Clears on the next generation that is charged successfully. |
 
 `url` always points at the page in the portal where you fix it.
 
