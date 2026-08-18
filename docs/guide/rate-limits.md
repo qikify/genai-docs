@@ -81,5 +81,5 @@ Use the `/ping` endpoint to check your current credit status:
 
 ```bash
 curl https://api.imagenhub.ai/api/ping \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```

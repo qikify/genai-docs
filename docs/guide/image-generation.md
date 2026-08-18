@@ -6,7 +6,7 @@ The `/process` endpoint is the core of ImagenHub. Submit a prompt, get back gene
 
 ```bash
 curl -X POST https://api.imagenhub.ai/api/process \
-  -H "Authorization: Bearer sk_live_YOUR_KEY" \
+  -H "Authorization: Bearer sk_igh_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model_id": 1,
@@ -42,7 +42,7 @@ Check task status by polling:
 
 ```bash
 curl https://api.imagenhub.ai/api/tasks/{task_id} \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 Poll every 1-2 seconds until `status` is `success` or `error`.
@@ -53,7 +53,7 @@ For real-time updates, use Server-Sent Events:
 
 ```bash
 curl -N https://api.imagenhub.ai/api/tasks/{task_id}/stream \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 Each SSE event contains a JSON-encoded task object. The stream closes automatically when the task reaches `success` or `error`.
@@ -63,7 +63,7 @@ Each SSE event contains a JSON-encoded task object. The stream closes automatica
 ```javascript
 const eventSource = new EventSource(
   'https://api.imagenhub.ai/api/tasks/019d29c6.../stream',
-  { headers: { 'Authorization': 'Bearer sk_live_YOUR_KEY' } }
+  { headers: { 'Authorization': 'Bearer sk_igh_YOUR_KEY' } }
 );
 
 eventSource.onmessage = (event) => {
@@ -95,7 +95,7 @@ Instead of specifying `model_id` and all parameters, you can use a template:
 
 ```bash
 curl -X POST https://api.imagenhub.ai/api/process \
-  -H "Authorization: Bearer sk_live_YOUR_KEY" \
+  -H "Authorization: Bearer sk_igh_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "template_id": "019d29c5-9663-71c4-b698-9cbf898948d4",

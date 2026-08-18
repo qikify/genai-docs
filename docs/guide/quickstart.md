@@ -7,8 +7,7 @@ Generate your first image in under 5 minutes.
 Sign up at [imagenhub.ai](https://imagenhub.ai) and create an API key from the dashboard. Keys look like:
 
 ```
-sk_live_abc123...   # production key
-sk_test_xyz789...   # test key (no charges)
+sk_igh_abc123...
 ```
 
 ## 2. Test your key
@@ -17,7 +16,7 @@ Verify your key works and check your credit balance:
 
 ```bash
 curl https://api.imagenhub.ai/api/ping \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 ```json
@@ -50,7 +49,7 @@ Submit a generation request using a model ID:
 
 ```bash
 curl -X POST https://api.imagenhub.ai/api/process \
-  -H "Authorization: Bearer sk_live_YOUR_KEY" \
+  -H "Authorization: Bearer sk_igh_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model_id": 1,
@@ -79,7 +78,7 @@ Poll the task until `status` is `success`:
 
 ```bash
 curl https://api.imagenhub.ai/api/tasks/019d29c6-a50d-7340-a521-22ef5d1a4bb6 \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 ```json

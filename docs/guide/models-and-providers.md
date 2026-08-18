@@ -33,7 +33,7 @@ A **provider** is a third-party AI service that hosts models (e.g., OpenAI, Fal.
 
 ```bash
 curl https://api.imagenhub.ai/api/providers \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 ### Model-provider combinations

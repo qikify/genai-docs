@@ -2,6 +2,12 @@
 
 All notable changes to the ImagenHub API.
 
+## Unreleased
+
+Removed the live/test API key distinction. There is now one kind of key, prefixed `sk_igh_`.
+
+A `sk_test_` key never behaved differently from a `sk_live_` one — both generated real images and deducted real credits — so the documentation describing test keys as free was wrong. Keys already issued under either prefix continue to work unchanged; the `type` field is gone from the key resource and from the `/ping` response.
+
 ## v1.0.0
 
 Initial public release.

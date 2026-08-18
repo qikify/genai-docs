@@ -8,7 +8,7 @@ Get a detailed log of all API requests:
 
 ```bash
 curl "https://api.imagenhub.ai/api/analytics/requests" \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 Each entry includes the model used, provider, status, cost, and duration.
@@ -25,7 +25,7 @@ Each entry includes the model used, provider, status, cost, and duration.
 
 ```bash
 curl "https://api.imagenhub.ai/api/analytics/requests?status=error&model_id=1" \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 ### Pagination
@@ -46,7 +46,7 @@ Get available filter values for building UI dropdowns:
 
 ```bash
 curl "https://api.imagenhub.ai/api/analytics/requests/filters" \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 Returns unique model and provider names from your request history.
@@ -57,7 +57,7 @@ Get time-bucketed cost and request count data:
 
 ```bash
 curl "https://api.imagenhub.ai/api/analytics/usage?timeframe=day" \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 Timeframe options: `hour`, `day`, `week`, `month`.
@@ -79,7 +79,7 @@ Get latency percentiles and error rates for a specific model:
 
 ```bash
 curl "https://api.imagenhub.ai/api/analytics/metrics?model_id=1&timeframe=day" \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 Returns success/error counts and latency percentiles (p50, p75, p90):

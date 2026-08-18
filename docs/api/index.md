@@ -14,7 +14,7 @@ Most endpoints require one of:
 
 | Method | Header | Use case |
 |--------|--------|----------|
-| API Key | `Authorization: Bearer sk_live_...` | Programmatic access, processing, analytics |
+| API Key | `Authorization: Bearer sk_igh_...` | Programmatic access, processing, analytics |
 | JWT | `Authorization: Bearer eyJhbG...` | Dashboard operations, templates, key management |
 
 Some catalog endpoints (`/models`, `/model-providers`) are public and require no authentication.
@@ -25,7 +25,7 @@ All `POST`/`PUT` requests use JSON:
 
 ```bash
 curl -X POST https://api.imagenhub.ai/api/process \
-  -H "Authorization: Bearer sk_live_YOUR_KEY" \
+  -H "Authorization: Bearer sk_igh_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "model_id": 1, "prompt": { "type": "string", "content": "..." } }'
 ```
