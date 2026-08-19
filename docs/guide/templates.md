@@ -48,7 +48,7 @@ Pass `template_id` to `/process` instead of `model_id`:
 
 ```bash
 curl -X POST https://api.imagenhub.ai/api/process \
-  -H "Authorization: Bearer sk_live_YOUR_KEY" \
+  -H "Authorization: Bearer sk_igh_YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "template_id": "019d29c5-9663-71c4-b698-9cbf898948d4",

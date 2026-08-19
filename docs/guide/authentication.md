@@ -8,15 +8,10 @@ For programmatic access, use Bearer token authentication with your API key:
 
 ```bash
 curl https://api.imagenhub.ai/api/ping \
-  -H "Authorization: Bearer sk_live_YOUR_KEY"
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
-API keys come in two types:
-
-| Type | Prefix | Purpose |
-|------|--------|---------|
-| Live | `sk_live_` | Production use, credits are deducted |
-| Test | `sk_test_` | Testing, no charges applied |
+API keys are prefixed `sk_igh_`. Every request made with one deducts credits from your account.
 
 Create and manage API keys from the [dashboard](https://imagenhub.ai) or via the API keys endpoints (JWT auth required).
 

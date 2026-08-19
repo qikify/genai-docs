@@ -17,7 +17,7 @@
   "paths": {
     "/ping": {
       "get": {
-        "summary": "Test API key",
+        "summary": "Verify API key",
         "description": "Returns basic info about the authenticated API key and user tier.\nUseful for testing API key authentication and checking credit/rate limit status.\n",
         "operationId": "ping",
         "tags": [
@@ -314,7 +314,7 @@
     "/process": {
       "post": {
         "summary": "Process an image generation request",
-        "description": "Submit an image generation request using either a model or a template.\nExactly one of `model_id` or `template_id` must be provided — they are\nmutually exclusive.\n\nWhen using `template_id`, the template's default inputs are merged with\nthe provided inputs (user input takes priority). The model is resolved\nfrom the template automatically.\n\nReturns a task resource. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n",
+        "description": "Submit an image generation request using either a model or a template.\nExactly one of `model_id` or `template_id` must be provided \u2014 they are\nmutually exclusive.\n\nWhen using `template_id`, the template's default inputs are merged with\nthe provided inputs (user input takes priority). The model is resolved\nfrom the template automatically.\n\nReturns a task resource. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n",
         "operationId": "process",
         "tags": [
           "Processing"
@@ -350,7 +350,7 @@
                       "integer",
                       "null"
                     ],
-                    "description": "Provider ID. Optional — system selects default if omitted.",
+                    "description": "Provider ID. Optional \u2014 system selects default if omitted.",
                     "example": 1
                   },
                   "_variables": {
@@ -628,7 +628,7 @@
     "/tasks": {
       "get": {
         "summary": "List tasks",
-        "description": "Returns the authenticated user's tasks, most recent first. Filter by\nstatus, template, or model to review a batch. Returns a lightweight\nprojection — use `GET /tasks/{task}` for a task's inputs and output\nimage URLs.\n",
+        "description": "Returns the authenticated user's tasks, most recent first. Filter by\nstatus, template, or model to review a batch. Returns a lightweight\nprojection \u2014 use `GET /tasks/{task}` for a task's inputs and output\nimage URLs.\n",
         "operationId": "listTasks",
         "tags": [
           "Processing"
@@ -946,7 +946,7 @@
               "type": "string",
               "maxLength": 255
             },
-            "description": "Search query — filters by name (partial match), or if the value is a valid template UUID, returns an exact match by template ID"
+            "description": "Search query \u2014 filters by name (partial match), or if the value is a valid template UUID, returns an exact match by template ID"
           },
           {
             "name": "ownership",
@@ -1922,7 +1922,7 @@
       "apiKeyAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "API key (sk_live_... or sk_test_...) obtained from the dashboard"
+        "description": "API key (sk_igh_...) obtained from the dashboard"
       },
       "jwtAuth": {
         "type": "http",
@@ -2116,14 +2116,6 @@
               "name": {
                 "type": "string",
                 "example": "Production API Key"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "live",
-                  "test"
-                ],
-                "example": "live"
               },
               "credit_limit": {
                 "type": [

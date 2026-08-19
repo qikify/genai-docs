@@ -37,7 +37,7 @@ A single MCP endpoint over Streamable HTTP. Authentication uses your ImagenHub A
 3. **Generate** — `generate-image`. Generation is asynchronous; it returns a task id with status `created`.
 4. **Poll** — `get-task` with that id until status is `success`, then read the output image URLs. `list-tasks` reviews earlier runs.
 
-Each successful generation charges credits to the account, just like the REST API (a `sk_test_` key connects and runs without charging).
+Each successful generation charges credits to the account, just like the REST API.
 
 ## Next
 

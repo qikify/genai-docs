@@ -15,19 +15,19 @@ The transport is Streamable HTTP — the client sends requests and reads respons
 Send your ImagenHub API key as a Bearer token, the same key you'd use for the [REST API](/guide/authentication):
 
 ```
-Authorization: Bearer sk_live_YOUR_KEY
+Authorization: Bearer sk_igh_YOUR_KEY
 ```
 
 The model itself never sees the key — your MCP client stores it and attaches it to every request, so keep keys in client config, not in prompts.
 
-Need a key? Create one from the [dashboard](https://imagenhub.ai) under **API Keys → Create Key** — see [Creating the API Keys](/teeinblue/api-keys). A `sk_live_` key generates for real; a `sk_test_` key connects and lists the tools without charging credits.
+Need a key? Create one from the [dashboard](https://imagenhub.ai) under **API Keys → Create Key** — see [Creating the API Keys](/teeinblue/api-keys).
 
 ## Claude Code
 
 ```bash
 claude mcp add --transport http imagenhub \
   https://api.imagenhub.ai/mcp/imagenhub \
-  --header "Authorization: Bearer sk_live_YOUR_KEY"
+  --header "Authorization: Bearer sk_igh_YOUR_KEY"
 ```
 
 ## Config-file clients
@@ -41,7 +41,7 @@ Clients that read an `mcpServers` config (Claude Desktop and others) take an HTT
       "type": "http",
       "url": "https://api.imagenhub.ai/mcp/imagenhub",
       "headers": {
-        "Authorization": "Bearer sk_live_YOUR_KEY"
+        "Authorization": "Bearer sk_igh_YOUR_KEY"
       }
     }
   }

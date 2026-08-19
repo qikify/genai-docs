@@ -11,8 +11,7 @@ You must create an API key to connect ImagenHub to Teeinblue.
 
    ![Create API Key form](./assets/image3.png)
 
-   - Set **Key Type** to **Live**.
-   - Optionally set a **Credit Limit** or an **Expiration Date**.
+   - Optionally set a **Credit Limit** or an **Expiration**.
 
 4. Copy the key once you're done — it's shown only once.
 
