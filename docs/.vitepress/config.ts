@@ -47,6 +47,7 @@ export default defineConfig({
             { text: 'Authentication', link: '/guide/authentication' },
             { text: 'Models & Providers', link: '/guide/models-and-providers' },
             { text: 'Image Generation', link: '/guide/image-generation' },
+            { text: 'Webhooks', link: '/guide/webhooks' },
             { text: 'Templates', link: '/guide/templates' },
             { text: 'Organization', link: '/guide/organization' },
           ],

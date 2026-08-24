@@ -1,6 +1,5 @@
 node_modules/
 docs/.vitepress/cache/
+docs/.vitepress/dist/
 .env
 
-# docs/.vitepress/dist is committed on purpose: the App Platform component serves
-# that path as a static site with no build step, so the built output must be in git.

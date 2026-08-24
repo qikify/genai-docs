@@ -12,6 +12,14 @@
     {
       "url": "https://api.imagenhub.ai/api",
       "description": "Production"
+    },
+    {
+      "url": "https://staging-api.imagenhub.ai/api",
+      "description": "Staging"
+    },
+    {
+      "url": "http://localhost/api",
+      "description": "Local development"
     }
   ],
   "paths": {
@@ -82,6 +90,85 @@
           },
           "402": {
             "$ref": "#/components/responses/CreditLimitExceeded"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/images": {
+      "post": {
+        "summary": "Host an image for use in later generations",
+        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved.\n\nUploaded images are re-encoded to JPEG, PNG or WebP, resized so the\nlongest edge is at most 4096 pixels, and stripped of metadata. The\nstored bytes will therefore differ from what was sent, and `size_bytes`\nreports what was stored.\n",
+        "operationId": "uploadImage",
+        "tags": [
+          "Images"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The image file. Accepted formats are JPEG, PNG, WebP, GIF,\nHEIC, HEIF and AVIF, decided by inspecting the bytes rather\nthan the filename or declared content type. SVG is rejected.\nMaximum 20 MB.\n"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image_base64": {
+                    "type": "string",
+                    "description": "Base64-encoded image, with or without a `data:<mime>;base64,`\nprefix. Note base64 inflates the payload by about a third and\nthe 20 MB limit applies to the decoded bytes.\n",
+                    "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                  },
+                  "image_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Public `https://` URL the server fetches. Must be reachable\nwithout credentials; plaintext `http://` is rejected, as are\nURLs resolving to private, loopback or link-local addresses.\n",
+                    "example": "https://example.com/reference.png"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The image was stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UploadedImage"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "The upload was refused. The message names the reason: an\nunsupported or unreadable format, a file over the size or pixel\nlimit, a URL that could not be fetched, more or fewer than one mode\nsupplied, or the account's upload quota being full.\n"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -366,6 +453,16 @@
                       "style": "watercolor",
                       "product": "sneakers"
                     }
+                  },
+                  "webhook_url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uri",
+                    "maxLength": 2048,
+                    "description": "Where to POST the result once the task finishes, instead of polling\nfor it.\n\nOmit it and we use the default endpoint configured for your\norganization, if there is one. Send it as `null` to suppress the\ncallback for this task even when a default is set.\n\nMust be `https` and must not embed credentials\n(`https://user:pass@host` is rejected). Reserved: it is never passed\nto the model as a generation input.\n",
+                    "example": "https://example.com/hooks/imagenhub"
                   }
                 },
                 "additionalProperties": {
@@ -470,12 +567,25 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "webhook_url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uri",
+                    "maxLength": 2048,
+                    "description": "Where to POST the result once the task finishes, instead of polling\nfor it.\n\nOmit it and we use the default endpoint configured for your\norganization, if there is one. Send it as `null` to suppress the\ncallback for this task even when a default is set.\n\nMust be `https` and must not embed credentials\n(`https://user:pass@host` is rejected).\n\nThis is the one field name reserved out of the model's input\nnamespace: it is stripped before the body is matched against the\nmodel's input schema, and is never forwarded to the provider.\n",
+                    "example": "https://example.com/hooks/imagenhub"
+                  }
+                },
                 "additionalProperties": {
                   "description": "Dynamic input fields defined by the model's input schema.\nKeys and types vary per model.\n"
                 }
               },
               "example": {
-                "prompt": "A cat wearing a top hat"
+                "prompt": "A cat wearing a top hat",
+                "webhook_url": "https://example.com/hooks/imagenhub"
               }
             }
           }
@@ -517,7 +627,7 @@
     "/run/sync/{model_name}": {
       "post": {
         "summary": "Run a model synchronously",
-        "description": "Submit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\n\nUse this for low-latency integrations where polling is not practical.\nFor long-running models, prefer the async `POST /run/{model_name}`.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n",
+        "description": "Submit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\n\nUse this for low-latency integrations where polling is not practical.\nFor long-running models, prefer the async `POST /run/{model_name}`.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n\n`webhook_url` is not accepted here and returns 422 — the result comes back\nin this response, so there is nothing to call back about. Use the async\n`POST /run/{model_name}` for a callback.\n",
         "operationId": "runModelSync",
         "tags": [
           "Processing"
@@ -1917,6 +2027,156 @@
       }
     }
   },
+  "webhooks": {
+    "taskCompleted": {
+      "post": {
+        "summary": "Task finished (sent by us, to you)",
+        "description": "Sent to the `webhook_url` you supplied on the generation request, once the\ntask reaches a terminal state. You do not implement a path here — this is\nthe request we make to whatever URL you gave us.\n\n### Verifying\n\nDeliveries follow the [Standard Webhooks](https://www.standardwebhooks.com/)\nspecification, so you can verify them with an off-the-shelf library rather\nthan implementing the signature yourself. Libraries exist for JavaScript,\nPython, Go, Ruby, Java, C#, Rust, Elixir and PHP.\n\n```php\n$wh = new \\StandardWebhooks\\Webhook($secret);   // whsec_... from your dashboard\n$event = $wh->verify($requestBody, $requestHeaders);\n```\n\nThe signature covers `{webhook-id}.{webhook-timestamp}.{body}`. Reject\nanything whose timestamp is more than five minutes old — the library does\nthis for you.\n\nDuring a secret rotation, `webhook-signature` carries more than one\nspace-separated signature and any of them matching is valid. Nothing in your\ncode needs to change for that; the library already handles it.\n\n### Delivering\n\nRetried up to 6 times — after 1m, 5m, 30m, 2h and 6h — until your endpoint\nanswers `2xx`. Anything else, including a redirect, counts as a failure and\nis retried; we do not follow redirects.\n\nDelivery is **at-least-once and unordered**. The same event may arrive more\nthan once, so treat `webhook-id` as an idempotency key and ignore an id you\nhave already processed.\n\nAnswer quickly — we time out after 10 seconds — and do the work\nasynchronously rather than while we wait.\n\n**Do not depend on delivery.** Endpoints go down and retry budgets run out.\nPoll `GET /tasks/{id}` for anything you were expecting and have not heard\nabout.\n\n### What this describes\n\nThe payload is a snapshot of the task at the moment it finished, not a live\nview. It is accurate when sent and stays as sent through every retry. For the\ncurrent state of a task — at any point, including long after the callback —\nfollow `data.url` or call `GET /tasks/{id}`.\n\nBoth are given deliberately. Read the body and act immediately, or follow the\nlink and be certain; whichever suits your integration.\n\n`data.output` lists every result the task produced. A task produces a handful\nof images at most, and we will not inline more than 100 in a single delivery\n— beyond that, read them from `data.url`.\n\n### Changes\n\nFields are only ever added, never removed and never changed in type, so\nthere is no version to pin. Ignore fields you do not recognise.\n",
+        "operationId": "taskCompletedWebhook",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhook-id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique per event and stable across retries. Use it to deduplicate.",
+            "example": "evt_0193a8f1-7c2e-4d5a-9f01-3b8e1a4c9d22"
+          },
+          {
+            "name": "webhook-timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unix seconds at which this attempt was signed.",
+            "example": "1755061200"
+          },
+          {
+            "name": "webhook-signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One or more space-separated `v1,<base64>` signatures. More than one\nappears only while a secret is being rotated; any match is valid.\n",
+            "example": "v1,K5oZfzN95Z9UVu1EsfQmfVNQhnkZ2pj9o9NDN/H/pI4="
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Same value as the `webhook-id` header, repeated here so it survives a proxy that strips headers.",
+                    "example": "evt_0193a8f1-7c2e-4d5a-9f01-3b8e1a4c9d22"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "task.succeeded",
+                      "task.failed"
+                    ],
+                    "description": "Branch on this. More types may be added later."
+                  },
+                  "occurred_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the task finished — not when this attempt was sent. A retry\nhours later still reports the moment the work completed, which is\nwhat lets you order a burst of events that arrive together after a\nbacklog clears.\n",
+                    "example": "2026-08-13T09:14:22+00:00"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Every key is always present, null where it does not apply.",
+                    "properties": {
+                      "task_id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "The task resource. Follow it for authoritative current state,\nor ignore it and act on this payload — both are supported.\n",
+                        "example": "https://api.imagenhub.ai/api/tasks/019d29c5-9663-71c4-b698-9cbf898948d4"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "success",
+                          "error"
+                        ]
+                      },
+                      "post_processing_status": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "`failed` when a post-processing step failed on a run that still\nproduced an image. The event is still `task.succeeded`, because\nyou did get output — this is how you learn it is not the output\nyou asked for.\n"
+                      },
+                      "model": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "output": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "description": "Result URLs. Null on failure."
+                      },
+                      "error": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "Why it failed. Null on success."
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "id": "evt_0193a8f1-7c2e-4d5a-9f01-3b8e1a4c9d22",
+                "type": "task.succeeded",
+                "occurred_at": "2026-08-13T09:14:22+00:00",
+                "data": {
+                  "task_id": "019d29c5-9663-71c4-b698-9cbf898948d4",
+                  "url": "https://api.imagenhub.ai/api/tasks/019d29c5-9663-71c4-b698-9cbf898948d4",
+                  "status": "success",
+                  "post_processing_status": null,
+                  "model": "black-forest-labs/flux-schnell",
+                  "output": [
+                    "https://cdn.imagenhub.ai/outputs/019d29c5/0.png"
+                  ],
+                  "error": null
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "2xx": {
+            "description": "Any 2xx marks the delivery as landed and stops the retries. Anything else\nis retried until the budget is spent.\n"
+          }
+        }
+      }
+    }
+  },
   "components": {
     "securitySchemes": {
       "apiKeyAuth": {
@@ -1932,6 +2192,39 @@
       }
     },
     "schemas": {
+      "UploadedImage": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The durable reference. This is what to store and what to send back\nas an image input. It is not a URL and is not fetchable directly.\n",
+            "example": "media/in/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90.jpg"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "A URL that renders the image now. For convenience only — do not\npersist it in place of `path`.\n",
+            "example": "https://cdn.imagenhub.ai/media/in/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90.jpg"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "description": "Size of the stored image. This is what was stored after re-encoding,\nso it will usually differ from the size of what was sent.\n",
+            "example": 1288490
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the bytes are removed. Referencing the image in a generation\ndoes not extend this; the window runs from upload. Saving the path\ninto a template copies the image somewhere permanent instead.\n",
+            "example": "2026-09-16T10:12:00+00:00"
+          }
+        },
+        "required": [
+          "path",
+          "url",
+          "size_bytes",
+          "expires_at"
+        ]
+      },
       "Provider": {
         "type": "object",
         "properties": {
