@@ -25,7 +25,7 @@
   "paths": {
     "/ping": {
       "get": {
-        "summary": "Test API key",
+        "summary": "Verify API key",
         "description": "Returns basic info about the authenticated API key and user tier.\nUseful for testing API key authentication and checking credit/rate limit status.\n",
         "operationId": "ping",
         "tags": [
@@ -90,6 +90,85 @@
           },
           "402": {
             "$ref": "#/components/responses/CreditLimitExceeded"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/images": {
+      "post": {
+        "summary": "Host an image for use in later generations",
+        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved.\n\nUploaded images are re-encoded to JPEG, PNG or WebP, resized so the\nlongest edge is at most 4096 pixels, and stripped of metadata. The\nstored bytes will therefore differ from what was sent, and `size_bytes`\nreports what was stored.\n",
+        "operationId": "uploadImage",
+        "tags": [
+          "Images"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The image file. Accepted formats are JPEG, PNG, WebP, GIF,\nHEIC, HEIF and AVIF, decided by inspecting the bytes rather\nthan the filename or declared content type. SVG is rejected.\nMaximum 20 MB.\n"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image_base64": {
+                    "type": "string",
+                    "description": "Base64-encoded image, with or without a `data:<mime>;base64,`\nprefix. Note base64 inflates the payload by about a third and\nthe 20 MB limit applies to the decoded bytes.\n",
+                    "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                  },
+                  "image_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Public `https://` URL the server fetches. Must be reachable\nwithout credentials; plaintext `http://` is rejected, as are\nURLs resolving to private, loopback or link-local addresses.\n",
+                    "example": "https://example.com/reference.png"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The image was stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UploadedImage"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "The upload was refused. The message names the reason: an\nunsupported or unreadable format, a file over the size or pixel\nlimit, a URL that could not be fetched, more or fewer than one mode\nsupplied, or the account's upload quota being full.\n"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -2103,7 +2182,7 @@
       "apiKeyAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "API key (sk_live_... or sk_test_...) obtained from the dashboard"
+        "description": "API key (sk_igh_...) obtained from the dashboard"
       },
       "jwtAuth": {
         "type": "http",
@@ -2113,6 +2192,39 @@
       }
     },
     "schemas": {
+      "UploadedImage": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The durable reference. This is what to store and what to send back\nas an image input. It is not a URL and is not fetchable directly.\n",
+            "example": "media/in/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90.jpg"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "A URL that renders the image now. For convenience only — do not\npersist it in place of `path`.\n",
+            "example": "https://cdn.imagenhub.ai/media/in/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90.jpg"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "description": "Size of the stored image. This is what was stored after re-encoding,\nso it will usually differ from the size of what was sent.\n",
+            "example": 1288490
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the bytes are removed. Referencing the image in a generation\ndoes not extend this; the window runs from upload. Saving the path\ninto a template copies the image somewhere permanent instead.\n",
+            "example": "2026-09-16T10:12:00+00:00"
+          }
+        },
+        "required": [
+          "path",
+          "url",
+          "size_bytes",
+          "expires_at"
+        ]
+      },
       "Provider": {
         "type": "object",
         "properties": {
@@ -2297,14 +2409,6 @@
               "name": {
                 "type": "string",
                 "example": "Production API Key"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "live",
-                  "test"
-                ],
-                "example": "live"
               },
               "credit_limit": {
                 "type": [
