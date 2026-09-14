@@ -22,6 +22,7 @@ When the API refuses a request for a reason that needs more than a status code, 
 | `title` | A short name for the type. Same for every occurrence. |
 | `status` | The HTTP status, repeated in the body. |
 | `detail` | What went wrong this time, for a human. Do not parse it; the extra fields carry the same information as data. |
+| `instance` | A URI for this specific occurrence. Not sent today; reserved for a request id. |
 
 Anything else in the object is specific to the type and is documented on its page.
 
@@ -41,4 +42,6 @@ Errors that a status code fully describes keep Laravel's plain shape, `{"message
 | `403` | Not authorized for this resource |
 | `404` | Resource does not exist |
 | `422` | Invalid request body. Includes an `errors` object keyed by field |
-| `429` | Rate limited (free tier). Check the `Retry-After` header |
+| `429` | Too many upload requests. Check the `Retry-After` header |
+
+The free-tier request limit is the one error still on the older envelope. It answers `429` with `{"error": {"type": "rate_limit_exceeded", "message": "..."}}` and the `Retry-After` and `X-RateLimit-*` headers; see [Rate Limits & Credits](/guide/rate-limits). It will move to a problem details body in a later release.
