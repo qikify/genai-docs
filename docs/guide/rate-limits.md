@@ -37,17 +37,17 @@ Paid accounts have no rate limits. Instead, each request deducts credits based o
 | `X-Credits-Used` | Total credits used by this API key |
 | `X-Credits-Remaining` | Remaining credits (or `"unlimited"`) |
 
-When credits run out, you receive a `402` response:
+When the balance cannot cover a run, the request is refused with `403` and an [`insufficient-credits`](/errors/insufficient-credits) problem:
 
 ```json
 {
-  "error": {
-    "type": "credit_limit_exceeded",
-    "message": "Credit limit exceeded for this API key.",
-    "credit_limit": 1000.00,
-    "credits_used": 1000.00,
-    "resets_at": "2026-04-01T00:00:00+00:00"
-  }
+  "type": "https://docs.imagenhub.ai/errors/insufficient-credits",
+  "title": "Insufficient credits",
+  "status": 403,
+  "detail": "Your current balance is 3 credits, but this run costs 10.",
+  "balance": 3,
+  "cost": 10,
+  "overage_limit": 0
 }
 ```
 
