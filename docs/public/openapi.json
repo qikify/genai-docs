@@ -97,7 +97,7 @@
     "/images": {
       "post": {
         "summary": "Host an image for use in later generations",
-        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved.\n\nUploaded images are re-encoded to JPEG, PNG or WebP, resized so the\nlongest edge is at most 4096 pixels, and stripped of metadata. The\nstored bytes will therefore differ from what was sent, and `size_bytes`\nreports what was stored.\n",
+        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\nThe decoded upload limit is 10 MB for every transport.\n\nFor a large image, or from a network whose route to this API is slow,\nthe two-call upload starting at `POST /images/upload-url` sends the\nbytes straight to storage instead and returns the same reference.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved.\n\nUploaded images are re-encoded to JPEG, PNG or WebP, resized so the\nlongest edge is at most 4096 pixels, and stripped of metadata. The\nstored bytes will therefore differ from what was sent, and `size_bytes`\nreports what was stored. Send `path`, never `url`, as the generation\nreference.\n",
         "operationId": "uploadImage",
         "tags": [
           "Images"
@@ -120,7 +120,7 @@
                   "file": {
                     "type": "string",
                     "format": "binary",
-                    "description": "The image file. Accepted formats are JPEG, PNG, WebP, GIF,\nHEIC, HEIF and AVIF, decided by inspecting the bytes rather\nthan the filename or declared content type. SVG is rejected.\nMaximum 20 MB.\n"
+                    "description": "The image file. Accepted formats are JPEG, PNG, WebP, GIF,\nHEIC, HEIF and AVIF, decided by inspecting the bytes rather\nthan the filename or declared content type. SVG is rejected.\nMaximum 10 MB.\n"
                   }
                 }
               }
@@ -131,7 +131,7 @@
                 "properties": {
                   "image_base64": {
                     "type": "string",
-                    "description": "Base64-encoded image, with or without a `data:<mime>;base64,`\nprefix. Note base64 inflates the payload by about a third and\nthe 20 MB limit applies to the decoded bytes.\n",
+                    "description": "Base64-encoded image, with or without a `data:<mime>;base64,`\nprefix. Note base64 inflates the payload by about a third and\nthe 10 MB limit applies to the decoded bytes.\n",
                     "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
                   },
                   "image_url": {
@@ -166,6 +166,114 @@
           },
           "422": {
             "description": "The upload was refused. The message names the reason: an\nunsupported or unreadable format, a file over the size or pixel\nlimit, a URL that could not be fetched, more or fewer than one mode\nsupplied, or the account's upload quota being full.\n"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/images/upload-url": {
+      "post": {
+        "summary": "Mint a URL to upload an image straight to storage",
+        "description": "The first half of a two-call upload that sends the bytes to storage\ndirectly rather than through this API. The bytes go raw rather than\nbase64, and they take the caller's own route to the storage bucket\ninstead of the route to this API, which from some networks is many\ntimes faster.\n\nThe response names an `upload_url`, the `headers` the PUT must carry\nunchanged, and the `path` the bytes will occupy. PUT the raw image\nbytes to `upload_url` with those headers. When the PUT answers 2xx,\nsend `path` to `POST /images/confirm`, which validates the image and\nreturns the same reference `POST /images` returns.\n\nNothing exists until confirmation. Minting creates no row and consumes\nno quota; a URL nobody writes to, and bytes nobody confirms, are swept\nwith the rest of the expiring prefix. The URL writes to one key and\nnothing else, until `expires_at`, so a leaked URL can put bytes in one\nplace that nothing reads until this account confirms them.\n\nThis route has its own rate limit, separate from `POST /images` and\nfrom `POST /images/confirm`, so one mint and one confirm never exhaust\neither.\n",
+        "operationId": "createImageUploadUrl",
+        "tags": [
+          "Images"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A slot was minted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StagedUpload"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "No slot was minted. Either the account's upload quota is full, or\nthis deployment cannot sign upload URLs, in which case the message\nsays to use `POST /images` instead.\n"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/images/confirm": {
+      "post": {
+        "summary": "Turn bytes written to a minted URL into a hosted image",
+        "description": "The second half of a two-call upload. Send the `path` that\n`POST /images/upload-url` returned, once the PUT to its `upload_url`\nhas answered 2xx.\n\nThe bytes are read from storage and treated exactly as bytes sent to\n`POST /images`: validated by inspecting them, re-encoded, and given a\nnew `path` under the same rules. The answer has the same shape as\n`POST /images`, and the `path` in it is the reference to keep. The\nstaged path is consumed and cannot be confirmed twice.\n\nWhatever was at the staged path is removed whether or not it was\naccepted, so a refused upload has to be minted and sent again.\n",
+        "operationId": "confirmImageUpload",
+        "tags": [
+          "Images"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "description": "The `path` returned by `POST /images/upload-url`.",
+                    "example": "media/staging/42/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The image was stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UploadedImage"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "The upload was refused. The message names the reason: nothing this\naccount staged is readable at that path (never written, already\nconfirmed, or staged for another account, which are deliberately\none message), an unsupported or unreadable format, a file over the\nsize or pixel limit, or the account's upload quota being full.\n"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -460,6 +568,27 @@
                     "maxLength": 2048,
                     "description": "Where to POST the result once the task finishes, instead of polling\nfor it.\n\nOmit it and we use the default endpoint configured for your\norganization, if there is one. Send it as `null` to suppress the\ncallback for this task even when a default is set.\n\nMust be `https` and must not embed credentials\n(`https://user:pass@host` is rejected). Reserved: it is never passed\nto the model as a generation input.\n",
                     "example": "https://example.com/hooks/imagenhub"
+                  },
+                  "metadata": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "maxProperties": 25,
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "description": "Your own labels for this task: an order number, a campaign, the\ncustomer it belongs to. They are stored with the task, come back\non the task resource, and `GET /tasks` can filter on them.\n\nAt most 25 keys. Every value must be a scalar (string, number,\nboolean or null), and a string value is capped at 500 characters.\nSending `{}` reads as sending nothing, and the task comes back with\n`metadata: null`. Reserved: it is never passed to the model as a\ngeneration input.\n",
+                    "example": {
+                      "partner": "teeinblue",
+                      "campaign_id": "cmp_12345"
+                    }
                   }
                 },
                 "additionalProperties": {
@@ -516,44 +645,11 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Refused. As application/problem+json: the account cannot cover the run (see https://docs.imagenhub.ai/errors/insufficient-credits). As application/json: not authorized to use the specified template.",
+            "description": "Refused. As application/problem+json, the account cannot cover the run (see https://docs.imagenhub.ai/errors/insufficient-credits). As application/json, not authorized to use the specified template.",
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ProblemDetails"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "balance": {
-                          "type": "integer",
-                          "description": "Credit balance when the request was made; negative while overage is in use",
-                          "example": 3
-                        },
-                        "cost": {
-                          "type": "integer",
-                          "description": "What the run would have cost",
-                          "example": 10
-                        },
-                        "overage_limit": {
-                          "type": "integer",
-                          "description": "How far below zero the account may go; 0 when overage is off",
-                          "example": 0
-                        }
-                      }
-                    }
-                  ]
-                },
-                "example": {
-                  "type": "https://docs.imagenhub.ai/errors/insufficient-credits",
-                  "title": "Insufficient credits",
-                  "status": 403,
-                  "detail": "Your current balance is 3 credits, but this run costs 10.",
-                  "balance": 3,
-                  "cost": 10,
-                  "overage_limit": 0
+                  "$ref": "#/components/schemas/InsufficientCreditsProblem"
                 }
               },
               "application/json": {
@@ -571,6 +667,217 @@
           },
           "422": {
             "description": "Validation error (e.g. both model_id and template_id provided)"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/batch/design/clone": {
+      "post": {
+        "summary": "Clone a design from a product image",
+        "description": "Reproduces the design shown in the source image as a print-ready file. Runs a fixed pipeline — auto-crop the mockup to the printed design, generate, upscale, remove background, resize to a print canvas — on pre-configured defaults; every field except `image` is optional. A run is refused (422) when no printed design can be located in the image, and 503 when design detection is temporarily unavailable. The created task (and each chain step under it) carries `metadata: {\"action\": \"clone\"}`, so a design run is filterable and distinguishable from an ordinary /api/process task in the same list. Asynchronous: returns the root task; poll GET /tasks/{id}.",
+        "operationId": "designClone",
+        "tags": [
+          "Design"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created root task.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/InsufficientCredits"
+          },
+          "422": {
+            "description": "Validation error (unknown field, ineligible model, malformed resize), or no printed design could be located in the image."
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/batch/design/redesign": {
+      "post": {
+        "summary": "Redesign from a product image",
+        "description": "Generates a new variation of the design shown in the source image as a print-ready file. Same pipeline and contract as /batch/design/clone — including the task carrying `metadata: {\"action\": \"redesign\"}` — only the pre-configured prompt differs.",
+        "operationId": "designRedesign",
+        "tags": [
+          "Design"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created root task.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/InsufficientCredits"
+          },
+          "422": {
+            "description": "Validation error."
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/batch/design/locate": {
+      "post": {
+        "summary": "Locate the printed design in a mockup",
+        "description": "Standalone detection, without starting a run: returns the printed design's bounding box (box_2d, 0-1000, y-first), clockwise tilt (rotation_degrees), confidence, and — when the detection is trusted — a stored upright crop of the design (crop_path, usable as the `image` of a later design run, plus a temporary crop_url). A distrusted detection returns 200 with fallback=true and the reason. The source image is never modified. 422 when the source cannot be read or exceeds 20MB / 40 megapixels; 503 when detection is temporarily unavailable.",
+        "operationId": "designLocate",
+        "tags": [
+          "Design"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "image"
+                ],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "description": "Source image: a hosted `path` from POST /images (preferred), an https URL, or a data URI."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Detection result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignLocateResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "The source image could not be read, or exceeds 20MB / 40 megapixels."
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "description": "Design detection is temporarily unavailable."
+          }
+        }
+      }
+    },
+    "/batch/design/options": {
+      "get": {
+        "summary": "Design flow options",
+        "description": "The clone/redesign missions with recommended generation models, each step's default and eligible models, and the print-size resize presets.",
+        "operationId": "designOptions",
+        "tags": [
+          "Design"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated options.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignOptions"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -620,8 +927,29 @@
                     ],
                     "format": "uri",
                     "maxLength": 2048,
-                    "description": "Where to POST the result once the task finishes, instead of polling\nfor it.\n\nOmit it and we use the default endpoint configured for your\norganization, if there is one. Send it as `null` to suppress the\ncallback for this task even when a default is set.\n\nMust be `https` and must not embed credentials\n(`https://user:pass@host` is rejected).\n\nThis is the one field name reserved out of the model's input\nnamespace: it is stripped before the body is matched against the\nmodel's input schema, and is never forwarded to the provider.\n",
+                    "description": "Where to POST the result once the task finishes, instead of polling\nfor it.\n\nOmit it and we use the default endpoint configured for your\norganization, if there is one. Send it as `null` to suppress the\ncallback for this task even when a default is set.\n\nMust be `https` and must not embed credentials\n(`https://user:pass@host` is rejected).\n\nReserved out of the model's input namespace, along with\n`metadata`: both are stripped before the body is matched against\nthe model's input schema, and neither reaches the provider.\n",
                     "example": "https://example.com/hooks/imagenhub"
+                  },
+                  "metadata": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "maxProperties": 25,
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "description": "Your own labels for this task: an order number, a campaign, the\ncustomer it belongs to. They are stored with the task, come back\non the task resource, and `GET /tasks` can filter on them.\n\nAt most 25 keys. Every value must be a scalar (string, number,\nboolean or null), and a string value is capped at 500 characters.\nSending `{}` reads as sending nothing, and the task comes back with\n`metadata: null`.\n\nReserved out of the model's input namespace, like `webhook_url`:\nstripped before the body is matched against the model's input\nschema, and never forwarded to the provider.\n",
+                    "example": {
+                      "partner": "teeinblue",
+                      "campaign_id": "cmp_12345"
+                    }
                   }
                 },
                 "additionalProperties": {
@@ -703,12 +1031,39 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "maxProperties": 25,
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ],
+                      "maxLength": 500
+                    },
+                    "description": "Your own labels for this task: an order number, a campaign, the\ncustomer it belongs to. Accepted here as well as on the async\nendpoint — this response carries only the images, so read them\nback with `GET /tasks/{task}` or filter on them in `GET /tasks`.\n\nAt most 25 keys. Every value must be a scalar (string, number,\nboolean or null), and a string value is capped at 500 characters.\n\nReserved out of the model's input namespace: stripped before the\nbody is matched against the model's input schema, and never\nforwarded to the provider.\n",
+                    "example": {
+                      "partner": "teeinblue",
+                      "campaign_id": "cmp_12345"
+                    }
+                  }
+                },
                 "additionalProperties": {
                   "description": "Dynamic input fields defined by the model's input schema.\nKeys and types vary per model.\n"
                 }
               },
               "example": {
-                "prompt": "A cat wearing a top hat"
+                "prompt": "A cat wearing a top hat",
+                "metadata": {
+                  "partner": "teeinblue",
+                  "campaign_id": "cmp_12345"
+                }
               }
             }
           }
@@ -783,7 +1138,7 @@
     "/tasks": {
       "get": {
         "summary": "List tasks",
-        "description": "Returns the authenticated user's tasks, most recent first. Filter by\nstatus, template, or model to review a batch. Returns a lightweight\nprojection — use `GET /tasks/{task}` for a task's inputs and output\nimage URLs.\n",
+        "description": "Returns the authenticated user's tasks, most recent first. Filter by\nstatus, template, model, or the labels you attached at creation to review\na batch. Returns a lightweight projection — use `GET /tasks/{task}` for a\ntask's inputs and output image URLs.\n",
         "operationId": "listTasks",
         "tags": [
           "Processing"
@@ -830,6 +1185,27 @@
               "type": "integer"
             },
             "description": "Filter by AI model ID"
+          },
+          {
+            "name": "metadata",
+            "in": "query",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            },
+            "description": "Filter by the labels attached to the task when it was created. Name one\nlabel per bracketed key, as in `?metadata[partner]=teeinblue`, and repeat\nthe parameter to narrow further: every pair given has to match, so\n`?metadata[partner]=teeinblue&metadata[campaign_id]=cmp_9921` returns only\nthe tasks carrying both. A pair whose value is empty is skipped rather\nthan matched on.\n",
+            "example": {
+              "campaign_id": "cmp_9921"
+            }
           },
           {
             "name": "sort_by",
@@ -1128,6 +1504,20 @@
             "description": "Filter by AI model ID"
           },
           {
+            "name": "category_ids[]",
+            "in": "query",
+            "required": false,
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "description": "Filter by one or more category IDs; a template filed under any of them is\nreturned. Repeat the parameter to pass multiple values (e.g.\n`?category_ids[]=<id>&category_ids[]=<id>`). Categories belong to the\nauthenticated account; an ID owned by anyone else is rejected with 422.\n"
+          },
+          {
             "name": "sort_by",
             "in": "query",
             "required": false,
@@ -1282,6 +1672,18 @@
                     "description": "Named placeholders (`{{name}}`) that appear in the template's prompt\nor other string inputs. Users fill them at processing time via the\n`_variables` map on `POST /process`.\n",
                     "items": {
                       "$ref": "#/components/schemas/PromptVariable"
+                    }
+                  },
+                  "category_ids": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "maxItems": 100,
+                    "description": "IDs of the account's own categories to file this template under.\nOmitting the field on an update leaves the existing filing alone;\nsending an empty array clears it. An ID belonging to another\naccount is rejected with 422.\n",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
                     }
                   }
                 }
@@ -1482,6 +1884,18 @@
                     "items": {
                       "$ref": "#/components/schemas/PromptVariable"
                     }
+                  },
+                  "category_ids": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "maxItems": 100,
+                    "description": "IDs of the account's own categories to file this template under.\nOmitting the field on an update leaves the existing filing alone;\nsending an empty array clears it. An ID belonging to another\naccount is rejected with 422.\n",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
                   }
                 }
               }
@@ -1557,6 +1971,225 @@
           },
           "404": {
             "description": "Template not found"
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List categories",
+        "description": "Every category the authenticated account owns, ordered by name. Categories\nare per-account: an account never sees another's, and there are no global\nor system categories.\n",
+        "operationId": "listCategories",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The account's categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Category"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create category",
+        "description": "Creates a category owned by the authenticated account. The name must be\nunique within the account, compared without regard to case, so \"Portrait\"\nand \"portrait\" are the same category. Punctuation and diacritics are part\nof the name: \"Ảnh\" and \"Anh\" are two categories, not one.\n",
+        "operationId": "createCategory",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Product shots"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Category"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "Validation error. The name is empty or already used by this account\n(compared without regard to case), reported under `name`; or the account\nis at its category limit, reported under `limit` — a key no field is\nbound to, because the fault is with the account rather than the name.\nThe limit is a deployment setting, not a fixed number.\n"
+          }
+        }
+      }
+    },
+    "/categories/{category}": {
+      "put": {
+        "summary": "Update category",
+        "description": "Renames a category. The new name must not already be used by this account,\ncompared without regard to case.\n",
+        "operationId": "updateCategory",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Head shots"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Category"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "The category belongs to another account"
+          },
+          "404": {
+            "description": "No such category"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete category",
+        "description": "Deletes the category and detaches it from every template filed under it.\nThe templates themselves are untouched, and the name becomes available again.\n",
+        "operationId": "deleteCategory",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Category deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "The category belongs to another account"
+          },
+          "404": {
+            "description": "No such category"
           }
         }
       }
@@ -2237,6 +2870,75 @@
       }
     },
     "schemas": {
+      "ProblemDetails": {
+        "type": "object",
+        "description": "An RFC 9457 problem details object, sent as application/problem+json. `type` identifies the problem and is the URL of its documentation page; members beyond the five listed are specific to the type.",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://docs.imagenhub.ai/errors/insufficient-credits"
+          },
+          "title": {
+            "type": "string",
+            "example": "Insufficient credits"
+          },
+          "status": {
+            "type": "integer",
+            "example": 403
+          },
+          "detail": {
+            "type": "string",
+            "example": "Your current balance is 3 credits, but this run costs 10."
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "additionalProperties": true
+      },
+      "InsufficientCreditsProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "balance": {
+                "type": "integer",
+                "description": "Credit balance when the request was made; negative while overage is in use",
+                "example": 3
+              },
+              "cost": {
+                "type": "integer",
+                "description": "What the run would have cost",
+                "example": 10
+              },
+              "overage_limit": {
+                "type": "integer",
+                "description": "How far below zero the account may go; 0 when overage is off",
+                "example": 0
+              }
+            }
+          }
+        ],
+        "example": {
+          "type": "https://docs.imagenhub.ai/errors/insufficient-credits",
+          "title": "Insufficient credits",
+          "status": 403,
+          "detail": "Your current balance is 3 credits, but this run costs 10.",
+          "balance": 3,
+          "cost": 10,
+          "overage_limit": 0
+        }
+      },
       "UploadedImage": {
         "type": "object",
         "properties": {
@@ -2268,6 +2970,50 @@
           "url",
           "size_bytes",
           "expires_at"
+        ]
+      },
+      "StagedUpload": {
+        "type": "object",
+        "properties": {
+          "upload_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Where to PUT the raw image bytes. The query string carries the\nauthorization, so no other credential is needed, and nothing else\ncan be done with it.\n",
+            "example": "https://imagenhub.nyc3.digitaloceanspaces.com/media/staging/42/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=600&X-Amz-Signature=3f1a9c0b7e2d4c6a8b5e1f0d9c7a6b4e2d1c0f9a8b7e6d5c4b3a2f1e0d9c8b7a"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Headers the PUT must send unchanged. They are covered by the\nsignature, so a PUT that drops or edits one is refused by the\nbucket. Any `Content-Type` may be sent alongside them: what the\nbytes are is decided by inspecting them at confirmation.\n",
+            "example": {
+              "Host": "imagenhub.nyc3.digitaloceanspaces.com"
+            }
+          },
+          "path": {
+            "type": "string",
+            "description": "Where the bytes will land, and what to send to\n`POST /images/confirm`. Not an image reference yet, because\nnothing has looked at the bytes.\n",
+            "example": "media/staging/42/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When `upload_url` stops accepting a PUT. Ten minutes from minting\nby default.\n",
+            "example": "2026-09-10T02:38:29+00:00"
+          },
+          "max_bytes": {
+            "type": "integer",
+            "description": "The largest image confirmation will accept. The bucket does not\nenforce it, so a larger PUT succeeds and is then refused at\nconfirmation.\n",
+            "example": 20971520
+          }
+        },
+        "required": [
+          "upload_url",
+          "headers",
+          "path",
+          "expires_at",
+          "max_bytes"
         ]
       },
       "Provider": {
@@ -2536,6 +3282,25 @@
             "type": "object",
             "description": "Processed input sent to the provider"
           },
+          "metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Labels attached when the task was created, `null` when none were sent. A\ntask that runs as a step of a chain carries the labels of the run that\nstarted it.\n",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "example": {
+              "partner": "teeinblue",
+              "campaign_id": "cmp_12345"
+            }
+          },
           "output": {
             "type": [
               "array",
@@ -2554,6 +3319,272 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "DesignRunRequest": {
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "Source image: a hosted `path` from POST /images (preferred), an https URL, or a data URI (data:image/png;base64,…). Up to 20MB and 40 megapixels; a larger source is refused with a 422 rather than processed."
+          },
+          "model": {
+            "type": "string",
+            "description": "Generation model name (any visible edit-capable model). Omit for the recommended default."
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 10000,
+            "description": "Your own generation prompt; omit to use the mission's pre-configured prompt."
+          },
+          "steps": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Per-step overrides. `params` are the step model's OWN settings — an upscaler's scale, a matting model's alpha — validated against that model's `input` schema (GET /models/{name}, or the model row in list-models over MCP): a key the schema doesn't declare, or a value that fails it (e.g. an out-of-enum scale), is rejected. Reserved `_`-prefixed keys are never allowed. `resize` has no `params`; its own knobs are `preset`/`width`/`height` below.",
+            "properties": {
+              "remove_background": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "Any visible post-processable model."
+                  },
+                  "params": {
+                    "type": "object",
+                    "description": "e.g. {\"remove_inside\": true} if the model declares that field."
+                  }
+                }
+              },
+              "upscale": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "Any visible post-processable model."
+                  },
+                  "params": {
+                    "type": "object",
+                    "description": "e.g. {\"scale\": 4} if the model declares a scale enum including 4."
+                  }
+                }
+              },
+              "resize": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Pass a preset, or explicit width and height — not both.",
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "Any visible post-processable model."
+                  },
+                  "preset": {
+                    "type": "string",
+                    "example": "tshirt"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": 64,
+                    "maximum": 10000
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": 64,
+                    "maximum": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "DesignLocateResult": {
+        "type": "object",
+        "properties": {
+          "box_2d": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "description": "[ymin, xmin, ymax, xmax], normalized 0-1000."
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rotation_degrees": {
+            "type": "number",
+            "description": "Clockwise tilt of the print from upright, in degrees."
+          },
+          "notes": {
+            "type": "string"
+          },
+          "crop_px": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "description": "[top, left, bottom, right] pixel crop in the source."
+          },
+          "fallback": {
+            "type": "boolean",
+            "description": "True when the detection was not trusted; no crop is stored."
+          },
+          "fallback_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "crop_path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Stored key of the upright crop; usable as a design run's `image`."
+          },
+          "crop_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Temporary URL of the crop (about one hour)."
+          }
+        }
+      },
+      "DesignOptions": {
+        "type": "object",
+        "properties": {
+          "missions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string",
+                  "example": "clone"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "Clone"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "prompt": {
+                  "type": "string",
+                  "description": "The mission's pre-configured generation prompt. Show it to the user for editing and send the edited text back as the run's `prompt` to override it."
+                },
+                "default_model": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "First available recommended model; null if none are visible."
+                },
+                "recommended_models": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "steps": {
+            "type": "object",
+            "properties": {
+              "remove_background": {
+                "type": "object",
+                "properties": {
+                  "default_model": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "eligible_models": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Visible, post-processable models."
+                  }
+                }
+              },
+              "upscale": {
+                "type": "object",
+                "properties": {
+                  "default_model": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "eligible_models": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "resize": {
+                "type": "object",
+                "properties": {
+                  "default_model": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "eligible_models": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "default_preset": {
+                    "type": "string",
+                    "example": "tshirt"
+                  },
+                  "presets": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "width": {
+                          "type": "integer"
+                        },
+                        "height": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "example": {
+                      "tshirt": {
+                        "width": 4500,
+                        "height": 5400
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -2620,6 +3651,42 @@
           "model": {
             "$ref": "#/components/schemas/AiModel"
           },
+          "categories": {
+            "type": "array",
+            "description": "The account's categories this template is filed under",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "description": "A label an account files its own templates under. Categories are never\nshared: every one belongs to the account that created it, and an account\ncan only ever see, use or name its own.\n",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "019d29c5-9663-71c4-b698-9cbf898948d4"
+          },
+          "name": {
+            "type": "string",
+            "description": "Unique within the account, compared without regard to case.",
+            "example": "Product shots"
+          },
+          "templates_count": {
+            "type": "integer",
+            "description": "Templates currently filed under this category. Returned by `GET /categories` only.",
+            "example": 4
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -2681,6 +3748,25 @@
           "credit_cost": {
             "type": "integer",
             "description": "Credits charged for this task"
+          },
+          "metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Labels attached when the task was created, `null` when none were sent",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "example": {
+              "partner": "teeinblue",
+              "campaign_id": "cmp_12345"
+            }
           },
           "message": {
             "type": [
@@ -2776,6 +3862,13 @@
             "type": "boolean",
             "description": "Whether this template defines any prompt variables (full definitions are returned by `GET /templates/{id}`)",
             "example": true
+          },
+          "categories": {
+            "type": "array",
+            "description": "The account's categories this template is filed under",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
           },
           "created_at": {
             "type": "string",
@@ -3170,39 +4263,6 @@
             }
           }
         }
-      },
-      "ProblemDetails": {
-        "type": "object",
-        "description": "An RFC 9457 problem details object, sent as application/problem+json. `type` identifies the problem and is the URL of its documentation page; fields beyond the five listed are specific to the type.",
-        "required": [
-          "type",
-          "title",
-          "status"
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "format": "uri",
-            "example": "https://docs.imagenhub.ai/errors/insufficient-credits"
-          },
-          "title": {
-            "type": "string",
-            "example": "Insufficient credits"
-          },
-          "status": {
-            "type": "integer",
-            "example": 403
-          },
-          "detail": {
-            "type": "string",
-            "example": "Your current balance is 3 credits, but this run costs 10."
-          },
-          "instance": {
-            "type": "string",
-            "format": "uri"
-          }
-        },
-        "additionalProperties": true
       }
     },
     "responses": {
@@ -3272,40 +4332,7 @@
         "content": {
           "application/problem+json": {
             "schema": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "balance": {
-                      "type": "integer",
-                      "description": "Credit balance when the request was made; negative while overage is in use",
-                      "example": 3
-                    },
-                    "cost": {
-                      "type": "integer",
-                      "description": "What the run would have cost",
-                      "example": 10
-                    },
-                    "overage_limit": {
-                      "type": "integer",
-                      "description": "How far below zero the account may go; 0 when overage is off",
-                      "example": 0
-                    }
-                  }
-                }
-              ]
-            },
-            "example": {
-              "type": "https://docs.imagenhub.ai/errors/insufficient-credits",
-              "title": "Insufficient credits",
-              "status": 403,
-              "detail": "Your current balance is 3 credits, but this run costs 10.",
-              "balance": 3,
-              "cost": 10,
-              "overage_limit": 0
+              "$ref": "#/components/schemas/InsufficientCreditsProblem"
             }
           }
         }
