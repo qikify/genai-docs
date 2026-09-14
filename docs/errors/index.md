@@ -44,4 +44,4 @@ Errors that a status code fully describes keep Laravel's plain shape, `{"message
 | `422` | Invalid request body. Includes an `errors` object keyed by field |
 | `429` | Too many upload requests. Check the `Retry-After` header |
 
-The free-tier request limit is the one error still on the older envelope. It answers `429` with `{"error": {"type": "rate_limit_exceeded", "message": "..."}}` and the `Retry-After` and `X-RateLimit-*` headers; see [Rate Limits & Credits](/guide/rate-limits). It will move to a problem details body in a later release.
+The free-tier request limit is the one error still on the older envelope. It answers `429` with `{"error": {"type": "rate_limit_exceeded", "message": "..."}}` and the `Retry-After` and `X-RateLimit-*` headers; see [Rate Limits & Credits](/guide/rate-limits).

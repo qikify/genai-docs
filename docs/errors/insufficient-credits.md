@@ -37,3 +37,5 @@ Credit costs per model are listed on each model's providers. See [Rate Limits & 
 - `POST /process`
 - `POST /run/{model_name}`
 - `POST /run/sync/{model_name}`
+- `POST /batch/design/clone`
+- `POST /batch/design/redesign`
