@@ -110,7 +110,7 @@ The template's `default_inputs` are merged with your request — your values tak
 | Status | Error | Action |
 |--------|-------|--------|
 | `401` | Invalid auth | Check your API key |
-| `402` | Credit limit exceeded | Top up credits or wait for reset |
+| `403` | [Insufficient credits](/errors/insufficient-credits) | Top up or raise the overage limit |
 | `403` | Template not accessible | Use your own or a public template |
 | `422` | Validation error | Check request body format |
 | `429` | Rate limited | Wait for `Retry-After` seconds |

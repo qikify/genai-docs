@@ -49,14 +49,15 @@ List endpoints include pagination metadata in `meta`:
 
 ## Error responses
 
-| Status | Type | Description |
-|--------|------|-------------|
-| `401` | `unauthenticated` | Missing or invalid credentials |
-| `402` | `credit_limit_exceeded` | Credit limit reached — includes `resets_at` |
-| `403` | `forbidden` | Not authorized for this resource |
-| `404` | `not_found` | Resource does not exist |
-| `422` | `validation_error` | Invalid request body |
-| `429` | `rate_limit_exceeded` | Free tier rate limit — check `Retry-After` header |
+| Status | Description |
+|--------|-------------|
+| `401` | Missing or invalid credentials |
+| `403` | Not authorized for this resource, or [insufficient credits](/errors/insufficient-credits) |
+| `404` | Resource does not exist |
+| `422` | Invalid request body |
+| `429` | Free tier rate limit — check `Retry-After` header |
+
+Refusals that need more than a status code come back as a problem details object. See [Errors](/errors/).
 
 ## Rate limit headers
 

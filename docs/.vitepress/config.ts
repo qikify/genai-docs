@@ -92,10 +92,23 @@ export default defineConfig({
         },
       ],
 
+      '/errors/': [
+        {
+          text: 'Errors',
+          items: [
+            { text: 'Overview', link: '/errors/' },
+            { text: 'Insufficient credits', link: '/errors/insufficient-credits' },
+          ],
+        },
+      ],
+
       '/api/': [
         {
           text: 'API Reference',
-          items: [{ text: 'Overview', link: '/api/' }],
+          items: [
+            { text: 'Overview', link: '/api/' },
+            { text: 'Errors', link: '/errors/' },
+          ],
         },
         {
           text: 'Utility',
