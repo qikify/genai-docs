@@ -25,7 +25,7 @@ export default defineConfig({
     [
       'link',
       {
-        href: 'https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Fira+Code:wght@400&family=Outfit:wght@400;500;600;700&display=swap',
+        href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400&display=swap',
         rel: 'stylesheet',
       },
     ],
