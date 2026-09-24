@@ -64,6 +64,7 @@ export default defineConfig({
           text: 'Use Cases',
           items: [
             { text: 'Dynamic Upload Ratio', link: '/guide/dynamic-upload-ratio' },
+            { text: 'Fallback Template', link: '/guide/fallback-template' },
           ],
         },
       ],
