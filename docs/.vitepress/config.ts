@@ -1,9 +1,23 @@
+import { copyFile, mkdir, readdir } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: 'ImagenHub',
   description: 'Generative media API — one endpoint, every image model.',
   cleanUrls: true,
+
+  // The host (DigitalOcean App Platform) serves /foo from foo/index.html but never tries
+  // foo.html, so every page is also written in the folder layout VitePress prescribes for
+  // such hosts: https://vitepress.dev/guide/routing#generating-clean-urls
+  async buildEnd({ outDir }) {
+    for (const file of await readdir(outDir, { recursive: true })) {
+      if (!file.endsWith('.html') || basename(file) === 'index.html' || file === '404.html') continue
+      const folderIndex = join(outDir, file.slice(0, -'.html'.length), 'index.html')
+      await mkdir(dirname(folderIndex), { recursive: true })
+      await copyFile(join(outDir, file), folderIndex)
+    }
+  },
 
   head: [
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
