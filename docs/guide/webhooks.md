@@ -222,6 +222,8 @@ The body is JSON with placeholders written as `{{VARIABLE}}`, substituted into s
 | `TASK_ID` | The generation that failed. Empty on alerts that are not about one generation |
 | `TASK_MODEL` | The model it ran on |
 | `TASK_ERROR` | What went wrong with it, in the provider's words |
+| `TEMPLATE_ID` | The template that generation ran from. Empty on one started without a template |
+| `TEMPLATE_NAME` | What that template is called. Empty where `TEMPLATE_ID` is |
 | `OPENED_AT` | When the condition began, or when the generation failed |
 | `RESOLVED_AT` | When it ended. Empty while it is still firing |
 | `OCCURRED_AT` | When this particular event happened |
