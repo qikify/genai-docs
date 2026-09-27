@@ -17,11 +17,15 @@ In the portal, under **Webhooks**:
 A generation request can override the default per call:
 
 ```bash
-curl -X POST https://api.imagenhub.ai/api/run/flux-schnell \
+curl -X POST https://api.imagenhub.ai/api/process \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "a red bicycle",
+    "model_id": 1,
+    "prompt": {
+      "type": "string",
+      "content": "a red bicycle"
+    },
     "webhook_url": "https://your-app.example.com/hooks/imagenhub"
   }'
 ```
