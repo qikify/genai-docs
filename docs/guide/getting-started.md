@@ -17,7 +17,7 @@ ImagenHub is a generative media API that gives you access to multiple image gene
 3. **Submit a request** to `/process` with your prompt and model ID
 4. **Poll or stream** the task status until your images are ready
 
-Every request is routed to an AI provider, processed, and the generated images are returned as signed URLs valid for one hour.
+Every request is routed to an AI provider, processed, and the generated images are returned as links on our CDN.
 
 ## Base URLs
 

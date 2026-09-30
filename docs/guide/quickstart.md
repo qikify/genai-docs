@@ -87,13 +87,13 @@ curl https://api.imagenhub.ai/api/tasks/019d29c6-a50d-7340-a521-22ef5d1a4bb6 \
     "id": "019d29c6-a50d-7340-a521-22ef5d1a4bb6",
     "status": "success",
     "output": [
-      "https://cdn.imagenhub.ai/generated/abc123.png?signature=..."
+      "https://cdn.imagenhub.ai/media/out/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90.png"
     ]
   }
 }
 ```
 
-Output URLs are signed and valid for **1 hour**. Download or serve them immediately.
+Output URLs are CDN links that do not expire. The images behind them are deleted **30 days** after an API run, so download anything you want to keep.
 
 ::: tip Prefer real-time updates?
 Use [Server-Sent Events](/guide/image-generation#streaming) instead of polling:

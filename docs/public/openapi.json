@@ -791,7 +791,7 @@
     "/batch/design/locate": {
       "post": {
         "summary": "Locate the printed design in a mockup",
-        "description": "Standalone detection, without starting a run: returns the printed design's bounding box (box_2d, 0-1000, y-first), clockwise tilt (rotation_degrees), confidence, and — when the detection is trusted — a stored upright crop of the design (crop_path, usable as the `image` of a later design run, plus a temporary crop_url). A distrusted detection returns 200 with fallback=true and the reason. The source image is never modified. 422 when the source cannot be read or exceeds 20MB / 40 megapixels; 503 when detection is temporarily unavailable.",
+        "description": "Standalone detection, without starting a run: returns the printed design's bounding box (box_2d, 0-1000, y-first), clockwise tilt (rotation_degrees), confidence, and — when the detection is trusted — a stored upright crop of the design (crop_path, usable as the `image` of a later design run, plus a crop_url to view it). A distrusted detection returns 200 with fallback=true and the reason. The source image is never modified. 422 when the source cannot be read or exceeds 20MB / 40 megapixels; 503 when detection is temporarily unavailable.",
         "operationId": "designLocate",
         "tags": [
           "Design"
@@ -1181,7 +1181,7 @@
     "/tasks/{task}": {
       "get": {
         "summary": "Get task status",
-        "description": "Returns the current status of a task. When status is `success`,\nthe `output` field contains signed URLs to generated images\n(valid for 1 hour).\n",
+        "description": "Returns the current status of a task. When status is `success`,\nthe `output` field contains CDN URLs to generated images. The URLs\ndo not expire. An API run's images are deleted once the retention\nwindow passes, and `output_expired` then says so.\n",
         "operationId": "getTask",
         "tags": [
           "Processing"
@@ -3194,11 +3194,18 @@
               "array",
               "null"
             ],
-            "description": "Signed URLs to generated images (only present on success)",
+            "description": "CDN URLs to generated images (only present on success)",
             "items": {
-              "type": "string",
+              "type": [
+                "string",
+                "null"
+              ],
               "format": "uri"
             }
+          },
+          "output_expired": {
+            "type": "boolean",
+            "description": "True once the retention window has deleted an output image; its place in `output` holds null."
           },
           "created_at": {
             "type": "string",
@@ -3350,7 +3357,7 @@
               "string",
               "null"
             ],
-            "description": "Temporary URL of the crop (about one hour)."
+            "description": "CDN URL of the crop."
           }
         }
       },
@@ -3509,8 +3516,8 @@
               "null"
             ],
             "format": "uri",
-            "description": "Signed URL to the WebP thumbnail image",
-            "example": "https://cdn.example.com/thumbnails/templates/abc.webp?signature=..."
+            "description": "CDN URL of the WebP thumbnail image",
+            "example": "https://cdn.imagenhub.ai/thumbnails/templates/abc.webp"
           },
           "default_inputs": {
             "type": [
@@ -3724,7 +3731,7 @@
               "null"
             ],
             "format": "uri",
-            "description": "Signed URL to the WebP thumbnail image"
+            "description": "CDN URL of the WebP thumbnail image"
           },
           "model": {
             "type": "object",
