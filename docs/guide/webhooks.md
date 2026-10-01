@@ -51,7 +51,7 @@ Sending `"webhook_url": null` suppresses the callback for that one generation, e
 }
 ```
 
-`type` is `task.succeeded` when the generation produced output and `task.failed` when it did not. A run whose post-processing failed still arrives as `task.succeeded`, because you did get an image; check `post_processing_status` to learn it is not the image you asked for.
+`type` is `task.succeeded` when the run produced the image you asked for and `task.failed` when it did not. A template run is one unit: when a post-processing step fails, the run arrives as `task.failed` with `post_processing_status` set to `failed`. Its `output` still carries the image from the last step that worked, and `error` names the step, the model and the reason, so you can decide whether to use that image.
 
 `occurred_at` is when the task finished, not when the attempt was sent. After a retry backlog clears, a burst of events arrives at once and this is what tells them apart.
 
@@ -82,7 +82,7 @@ If you configured account alerts before channels existed, your previous setup wa
 
 | Event | Reports | What clears it |
 |---|---|---|
-| `task.failed` | One generation ended without output. | Nothing. A failed generation is not a condition, so it never recovers. |
+| `task.failed` | One run failed: its generation, or one of its post-processing steps. | Nothing. A failed generation is not a condition, so it never recovers. |
 | `provider_key.insufficient_funds` | Your own key for a provider has no funds left, so generations routed there fail. | Topping up that provider account. Clears on the first generation that succeeds with the key. |
 | `provider_key.invalid` | Your own key for a provider was rejected as invalid. | Replacing the key in the portal. Clears on the first generation that succeeds with it. |
 | `credits.exhausted` | A generation was refused because your ImagenHub balance could not cover it. | Buying credits, or waiting for the monthly quota to renew. Clears on the next generation that is charged successfully. |

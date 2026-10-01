@@ -2686,7 +2686,7 @@
                           "string",
                           "null"
                         ],
-                        "description": "`failed` when a post-processing step failed on a run that still\nproduced an image. The event is still `task.succeeded`, because\nyou did get output — this is how you learn it is not the output\nyou asked for.\n"
+                        "description": "`failed` when a post-processing step failed. The run fails with\nit, so the event is `task.failed`, yet `output` still carries the\nimage from the last step that worked.\n"
                       },
                       "model": {
                         "type": [
@@ -2703,7 +2703,7 @@
                           "type": "string",
                           "format": "uri"
                         },
-                        "description": "Result URLs. Null on failure."
+                        "description": "Result URLs. Null on failure, except a failure in post-processing,\nwhich still carries the image from the last step that worked.\n"
                       },
                       "error": {
                         "type": [
@@ -3194,7 +3194,7 @@
               "array",
               "null"
             ],
-            "description": "Signed URLs to generated images (only present on success)",
+            "description": "Signed URLs to generated images (present on success, and on a failure in post-processing, holding the image from the last step that worked)",
             "items": {
               "type": "string",
               "format": "uri"
