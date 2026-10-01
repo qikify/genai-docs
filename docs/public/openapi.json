@@ -1181,7 +1181,7 @@
     "/tasks/{task}": {
       "get": {
         "summary": "Get task status",
-        "description": "Returns the current status of a task. When status is `success`,\nthe `output` field contains signed URLs to generated images\n(valid for 1 hour).\n",
+        "description": "Returns the current status of a task. When status is `success`,\nthe `output` field contains signed URLs to generated images\n(valid for 1 hour). A task whose post-processing failed has status\n`error` and still returns `output`, holding the image from the last\nstep that worked.\n",
         "operationId": "getTask",
         "tags": [
           "Processing"
@@ -1234,7 +1234,7 @@
     "/tasks/{task}/download": {
       "get": {
         "summary": "Download task output image",
-        "description": "Streams a single output image of a successful task as a file\ndownload (`Content-Disposition: attachment`). Use `index` to pick\namong multiple outputs (default `0`).\n",
+        "description": "Streams a single output image of a task as a file\ndownload (`Content-Disposition: attachment`). Use `index` to pick\namong multiple outputs (default `0`).\n",
         "operationId": "downloadTaskOutput",
         "tags": [
           "Processing"
