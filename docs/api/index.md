@@ -55,7 +55,7 @@ List endpoints include pagination metadata in `meta`:
 | `403` | Not authorized for this resource, or [insufficient credits](/errors/insufficient-credits) |
 | `404` | Resource does not exist |
 | `422` | Invalid request body |
-| `429` | Free tier rate limit — check `Retry-After` header |
+| `429` | Free tier per-minute limit (check `Retry-After`), or the [daily limit](/errors/daily-limit-reached) on `POST /process` |
 
 Refusals that need more than a status code come back as a problem details object. See [Errors](/errors/).
 
@@ -66,8 +66,6 @@ Included on every authenticated response:
 ```
 X-RateLimit-Limit-Minute: 60
 X-RateLimit-Remaining-Minute: 55
-X-RateLimit-Limit-Day: 1000
-X-RateLimit-Remaining-Day: 980
 X-Credits-Used: 150.50
 X-Credits-Remaining: 849.50
 ```

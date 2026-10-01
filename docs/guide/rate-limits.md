@@ -4,7 +4,11 @@ ImagenHub uses two systems depending on your tier: rate limits for free accounts
 
 ## Free tier
 
-Free accounts have per-minute and per-day request limits. When exceeded, you receive a `429` response:
+Free accounts have two limits: a per-minute limit on every request, and a daily limit on `POST /process`.
+
+### Per-minute limit
+
+When exceeded, you receive a `429` response:
 
 ```json
 {
@@ -17,6 +21,10 @@ Free accounts have per-minute and per-day request limits. When exceeded, you rec
 
 Check the `Retry-After` header for when you can retry.
 
+### Daily limit
+
+A Free organization may make 20 requests a day to `POST /process`. The count belongs to the organization and starts again at 00:00 UTC. The request after the twentieth is answered with a `429` [`daily-limit-reached`](/errors/daily-limit-reached) problem and saved as a failed task, and nothing is charged. A subscription lifts the limit.
+
 ### Rate limit headers
 
 Every response includes rate limit information:
@@ -25,8 +33,6 @@ Every response includes rate limit information:
 |--------|-------------|
 | `X-RateLimit-Limit-Minute` | Max requests per minute |
 | `X-RateLimit-Remaining-Minute` | Remaining requests this minute |
-| `X-RateLimit-Limit-Day` | Max requests per day |
-| `X-RateLimit-Remaining-Day` | Remaining requests today |
 
 ## Paid tier (credits)
 
