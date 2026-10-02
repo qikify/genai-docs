@@ -77,17 +77,17 @@ eventSource.onmessage = (event) => {
 
 ## Output format
 
-On success, the `output` field contains an array of signed image URLs:
+On success, the `output` field contains an array of image URLs on our CDN:
 
 ```json
 {
   "output": [
-    "https://cdn.imagenhub.ai/generated/abc123.png?signature=..."
+    "https://cdn.imagenhub.ai/media/out/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90.png"
   ]
 }
 ```
 
-URLs are signed and **valid for 1 hour**. Download them immediately or serve them to your users within that window.
+The URLs do not expire, but an API run's images are deleted after **30 days**. From then on `output_expired` is `true` and `output` holds `null` in their place, so download anything you want to keep.
 
 ## Using templates
 
