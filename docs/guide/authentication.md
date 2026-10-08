@@ -63,4 +63,4 @@ After authentication, the callback at `/auth/{provider}/callback` issues a JWT t
 |--------|---------|
 | `401`  | Missing or invalid authentication credentials |
 | `403`  | [Insufficient credits](/errors/insufficient-credits) — top up or raise the overage limit |
-| `429`  | Rate limited (free tier) — check `Retry-After` header |
+| `429`  | Rate limited (free tier): check `Retry-After`, or see the [daily limit](/errors/daily-limit-reached) on `POST /process` |

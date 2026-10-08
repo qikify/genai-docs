@@ -52,18 +52,6 @@
                 },
                 "description": "Remaining requests in minute window"
               },
-              "X-RateLimit-Limit-Day": {
-                "schema": {
-                  "type": "integer"
-                },
-                "description": "Request limit per day (free tier only)"
-              },
-              "X-RateLimit-Remaining-Day": {
-                "schema": {
-                  "type": "integer"
-                },
-                "description": "Remaining requests in day window"
-              },
               "X-Credits-Used": {
                 "schema": {
                   "type": "number"
@@ -97,7 +85,7 @@
     "/images": {
       "post": {
         "summary": "Host an image for use in later generations",
-        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\nThe decoded upload limit is 10 MB for every transport.\n\nFor a large image, or from a network whose route to this API is slow,\nthe two-call upload starting at `POST /images/upload-url` sends the\nbytes straight to storage instead and returns the same reference.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/sync/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved.\n\nUploaded images are re-encoded to JPEG, PNG or WebP, resized so the\nlongest edge is at most 4096 pixels, and stripped of metadata. The\nstored bytes will therefore differ from what was sent, and `size_bytes`\nreports what was stored. Send `path`, never `url`, as the generation\nreference.\n",
+        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\nThe decoded upload limit is 10 MB for every transport.\n\nFor a large image, or from a network whose route to this API is slow,\nthe two-call upload starting at `POST /images/upload-url` sends the\nbytes straight to storage instead and returns the same reference.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/sync/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved, whether the path is used in\n`default_inputs` or as the template's `thumbnail_path`.\n\nUploaded images are re-encoded to JPEG, PNG or WebP, resized so the\nlongest edge is at most 4096 pixels, and stripped of metadata. The\nstored bytes will therefore differ from what was sent, and `size_bytes`\nreports what was stored. Send `path`, never `url`, as the generation\nreference.\n",
         "operationId": "uploadImage",
         "tags": [
           "Images"
@@ -669,7 +657,42 @@
             "description": "Validation error (e.g. both model_id and template_id provided)"
           },
           "429": {
-            "$ref": "#/components/responses/RateLimited"
+            "description": "Refused. As application/problem+json, the organization has made every request its plan allows today (see https://docs.imagenhub.ai/errors/daily-limit-reached); the refused run is saved as a failed task. As application/json, too many requests in a minute (free tier only).",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds until the per-minute limit resets (application/json only)"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyLimitReachedProblem"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "example": "rate_limit_exceeded"
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Rate limit exceeded for minute window."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1294,7 +1317,7 @@
     "/tasks/{task}/stream": {
       "get": {
         "summary": "Stream task status (SSE)",
-        "description": "Server-Sent Events stream for real-time task status updates.\nEach event contains a JSON-encoded task object. The stream\ncloses when the task reaches `success` or `error` status.\n",
+        "description": "Server-Sent Events stream for real-time task status updates.\nEach event contains a JSON-encoded task object. The stream\ncloses when the task reaches `success` or `error` status.\n\nThe `success` event carries `output`, signed URLs of the output\nimages, and `output_paths`, the storage keys of the same images in\nthe same order. A key can be sent as a template's `thumbnail_source`.\n",
         "operationId": "streamTask",
         "tags": [
           "Processing"
@@ -1549,8 +1572,15 @@
                       "string",
                       "null"
                     ],
-                    "format": "uri",
-                    "description": "URL to generate a WebP thumbnail from"
+                    "description": "URL, or a storage key the organization owns (such as a run's\n`output_paths` entry), to generate a WebP thumbnail from. A key\nis refused with 422 unless the organization filled it. The result\nstays auto-managed: a later run still refreshes it once an edit\nchanges what the template generates. To choose a picture that\nno run may replace, host it with `POST /images` and send the\nreturned path as `thumbnail_path`.\n\nMutually exclusive with `thumbnail_path`.\n"
+                  },
+                  "thumbnail_path": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Storage reference from `POST /images` (its `path`), used as this\ntemplate's thumbnail. The bytes are copied into permanent\nstorage, so the upload's own expiry never reaches the thumbnail.\n\nA thumbnail set this way is never replaced by a generated one.\nMutually exclusive with `thumbnail_source`.\n",
+                    "example": "media/in/019d29c5-9663-71c4-b698-9cbf898948d4.webp"
                   },
                   "prompt_variables": {
                     "type": [
@@ -1760,8 +1790,15 @@
                       "string",
                       "null"
                     ],
-                    "format": "uri",
-                    "description": "URL to generate a new WebP thumbnail from (replaces existing)"
+                    "description": "URL, or a storage key the organization owns (such as a run's\n`output_paths` entry), to generate a new WebP thumbnail from\n(replaces existing). A key is refused with 422 unless the\norganization filled it.\nThe result stays auto-managed, and hands a previously chosen\npicture back to auto-generation. To choose a picture that no run\nmay replace, host it with `POST /images` and send the returned\npath as `thumbnail_path`.\n\nMutually exclusive with `thumbnail_path`.\n"
+                  },
+                  "thumbnail_path": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Storage reference from `POST /images` (its `path`), used as this\ntemplate's thumbnail. The bytes are copied into permanent\nstorage, so the upload's own expiry never reaches the thumbnail.\n\nSend `null` to remove the chosen thumbnail and hand the picture\nback to auto-generation, which regenerates it from the next\nsuccessful run. Omit the field entirely to leave the current\nthumbnail alone — `null` and absent mean different things here.\n\nMutually exclusive with `thumbnail_source`.\n",
+                    "example": "media/in/019d29c5-9663-71c4-b698-9cbf898948d4.webp"
                   },
                   "prompt_variables": {
                     "type": [
@@ -1859,6 +1896,65 @@
           },
           "404": {
             "description": "Template not found"
+          }
+        }
+      }
+    },
+    "/templates/{template}/duplicate": {
+      "post": {
+        "summary": "Duplicate template",
+        "description": "Copy a template the organization may use (its own, or a visible public\none) into a new template the organization owns. The copy is named after\nthe original with ` Copy` appended, and carries its description, model,\ndefault inputs, extra input, prompt variables and post-processing.\n\nCategories are kept only where the organization owns them, so a public\ntemplate's categories are dropped. A fallback template is kept only if\nthe organization may use it too; otherwise the copy has none.\n\nThe thumbnail and every stored default-input image are copied inside\nstorage, so the copy owns its own files: editing or deleting either\ntemplate never touches the other's. Nothing is downloaded by URL. The\ncopy keeps the original's `thumbnail_custom`. An original with no\nthumbnail, or one whose file is missing, gives a copy with none, and the\nnext successful run generates it.\n\nTakes no request body.\n",
+        "operationId": "duplicateTemplate",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the template to copy"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Template created, in the same shape `POST /templates` returns",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Template"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to use this template, or not allowed to manage templates"
+          },
+          "404": {
+            "description": "Template not found"
+          },
+          "422": {
+            "description": "The template names no model, so there is nothing for the copy to run.\nThe error is reported on `model_id`. A model that has since been\ndeleted or hidden is not refused: the copy keeps it, as the original does.\n"
           }
         }
       }
@@ -2827,6 +2923,38 @@
           "overage_limit": 0
         }
       },
+      "DailyLimitReachedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "task_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The failed task the refusal left behind",
+                "example": "0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90"
+              },
+              "resets_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the day's count starts again and requests resume",
+                "example": "2026-10-02T00:00:00+00:00"
+              }
+            }
+          }
+        ],
+        "example": {
+          "type": "https://docs.imagenhub.ai/errors/daily-limit-reached",
+          "title": "Daily limit reached",
+          "status": 429,
+          "detail": "Daily limit reached. The Free plan allows 20 requests per day. This task was not processed and no credits were charged. The limit resets at 2026-10-02 00:00 UTC.",
+          "task_id": "0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90",
+          "resets_at": "2026-10-02T00:00:00+00:00"
+        }
+      },
       "UploadedImage": {
         "type": "object",
         "properties": {
@@ -3519,6 +3647,11 @@
             "description": "CDN URL of the WebP thumbnail image",
             "example": "https://cdn.imagenhub.ai/thumbnails/templates/abc.webp"
           },
+          "thumbnail_custom": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "True when the thumbnail was chosen deliberately rather than generated\nfrom a run. A chosen thumbnail is never replaced automatically; send\n`thumbnail_path: null` on an update to clear it.\n"
+          },
           "default_inputs": {
             "type": [
               "object",
@@ -3732,6 +3865,11 @@
             ],
             "format": "uri",
             "description": "CDN URL of the WebP thumbnail image"
+          },
+          "thumbnail_custom": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "True when the thumbnail was chosen deliberately rather than generated\nfrom a run, and so is never replaced automatically.\n"
           },
           "model": {
             "type": "object",

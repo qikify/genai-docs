@@ -31,6 +31,7 @@ Anything else in the object is specific to the type and is documented on its pag
 | Type | Status | When |
 |------|--------|------|
 | [`insufficient-credits`](/errors/insufficient-credits) | `403` | The account cannot cover the credit cost of a run |
+| [`daily-limit-reached`](/errors/daily-limit-reached) | `429` | The organization has made every request its plan allows today |
 
 ## Other errors
 
@@ -44,4 +45,4 @@ Errors that a status code fully describes keep Laravel's plain shape, `{"message
 | `422` | Invalid request body. Includes an `errors` object keyed by field |
 | `429` | Too many upload requests. Check the `Retry-After` header |
 
-The free-tier request limit is the one error still on the older envelope. It answers `429` with `{"error": {"type": "rate_limit_exceeded", "message": "..."}}` and the `Retry-After` and `X-RateLimit-*` headers; see [Rate Limits & Credits](/guide/rate-limits).
+The free-tier per-minute limit is the one error still on the older envelope. It answers `429` with `{"error": {"type": "rate_limit_exceeded", "message": "..."}}` and the `Retry-After` and `X-RateLimit-*` headers; see [Rate Limits & Credits](/guide/rate-limits).

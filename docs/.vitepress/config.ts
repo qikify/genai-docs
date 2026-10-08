@@ -113,6 +113,7 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/errors/' },
             { text: 'Insufficient credits', link: '/errors/insufficient-credits' },
+            { text: 'Daily limit reached', link: '/errors/daily-limit-reached' },
           ],
         },
       ],
