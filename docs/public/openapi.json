@@ -912,7 +912,7 @@
       "post": {
         "summary": "Run a model synchronously",
         "deprecated": true,
-        "description": "**Deprecated.** This endpoint is removed after 2 November 2026, and from\nthen on answers `410 Gone`. Use `POST /process` with the model's\n`model_id` instead, then poll `GET /tasks/{task}` or stream\n`GET /tasks/{task}/stream` until the task finishes.\n\nSubmit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n\n`webhook_url` is not accepted here and returns 422 — the result comes back\nin this response, so there is nothing to call back about. Use the async\n`POST /process` for a callback.\n",
+        "description": "**Deprecated.** This endpoint will be removed, on a date not set yet, and\nfrom then on answers `410 Gone`. Use `POST /process` with the model's\n`model_id` instead, then poll `GET /tasks/{task}` or stream\n`GET /tasks/{task}/stream` until the task finishes.\n\nSubmit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n\n`webhook_url` is not accepted here and returns 422 — the result comes back\nin this response, so there is nothing to call back about. Use the async\n`POST /process` for a callback.\n",
         "operationId": "runModelSync",
         "tags": [
           "Processing"
