@@ -79,6 +79,7 @@ export default defineConfig({
           items: [
             { text: 'Dynamic Upload Ratio', link: '/guide/dynamic-upload-ratio' },
             { text: 'Fallback Template', link: '/guide/fallback-template' },
+            { text: 'Batch Editor', link: '/guide/batch-editor' },
           ],
         },
       ],
