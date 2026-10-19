@@ -911,7 +911,8 @@
     "/run/sync/{model_name}": {
       "post": {
         "summary": "Run a model synchronously",
-        "description": "Submit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\n\nUse this for low-latency integrations where polling is not practical.\nFor long-running models, prefer the async `POST /process`.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n\n`webhook_url` is not accepted here and returns 422 — the result comes back\nin this response, so there is nothing to call back about. Use the async\n`POST /process` for a callback.\n",
+        "deprecated": true,
+        "description": "**Deprecated.** This endpoint is removed after 2 November 2026, and from\nthen on answers `410 Gone`. Use `POST /process` with the model's\n`model_id` instead, then poll `GET /tasks/{task}` or stream\n`GET /tasks/{task}/stream` until the task finishes.\n\nSubmit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n\n`webhook_url` is not accepted here and returns 422 — the result comes back\nin this response, so there is nothing to call back about. Use the async\n`POST /process` for a callback.\n",
         "operationId": "runModelSync",
         "tags": [
           "Processing"
@@ -1317,7 +1318,7 @@
     "/tasks/{task}/stream": {
       "get": {
         "summary": "Stream task status (SSE)",
-        "description": "Server-Sent Events stream for real-time task status updates.\nEach event contains a JSON-encoded task object. The stream\ncloses when the task reaches `success` or `error` status.\n\nThe `success` event carries `output`, signed URLs of the output\nimages, and `output_paths`, the storage keys of the same images in\nthe same order. A key can be sent as a template's `thumbnail_source`.\n",
+        "description": "Server-Sent Events stream for real-time task status updates.\nEach event contains a JSON-encoded task object. The stream\ncloses when the task reaches `success` or `error` status.\n\nThe `success` event carries `output`, CDN URLs of the output\nimages, and `output_paths`, the storage keys of the same images in\nthe same order. A key can be sent as a template's `thumbnail_source`.\n",
         "operationId": "streamTask",
         "tags": [
           "Processing"
