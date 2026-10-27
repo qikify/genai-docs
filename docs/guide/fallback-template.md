@@ -121,6 +121,8 @@ If the fallback also fails, the task is marked **Error**. The red notice at the 
 
 ![A test forcing a real provider error: neither the primary nor the fallback model had any provider left able to process the request (all 5 providers of each model were rate-limited). The task ended in Error, and the credits for the failed step were refunded.](./assets/ft-task-page-error.png)
 
+Through the API, [`GET /tasks/{task}`](/api/tasks) returns the same: `fallback_from` names the primary model and why it failed, `attempts` lists each provider called with its model and status, and `logs` holds the run's log lines.
+
 ## Good to know
 
 - **One backup, one switch.** Each template can have one fallback, and a run switches at most once. If the fallback template also has its own fallback set, that fallback is not used when the fallback template fails — the run ends there.
