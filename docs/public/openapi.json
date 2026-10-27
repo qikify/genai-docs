@@ -153,7 +153,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "422": {
-            "description": "The upload was refused. The message names the reason: an\nunsupported or unreadable format, a file over the size or pixel\nlimit, a URL that could not be fetched, more or fewer than one mode\nsupplied, or the account's upload quota being full.\n"
+            "description": "The upload was refused. The message names the reason: an\nunsupported or unreadable format, a file over the size or pixel\nlimit, a URL that could not be fetched, or more or fewer than one\nmode supplied.\n"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -164,7 +164,7 @@
     "/images/upload-url": {
       "post": {
         "summary": "Mint a URL to upload an image straight to storage",
-        "description": "The first half of a two-call upload that sends the bytes to storage\ndirectly rather than through this API. The bytes go raw rather than\nbase64, and they take the caller's own route to the storage bucket\ninstead of the route to this API, which from some networks is many\ntimes faster.\n\nThe response names an `upload_url`, the `headers` the PUT must carry\nunchanged, and the `path` the bytes will occupy. PUT the raw image\nbytes to `upload_url` with those headers. When the PUT answers 2xx,\nsend `path` to `POST /images/confirm`, which validates the image and\nreturns the same reference `POST /images` returns.\n\nNothing exists until confirmation. Minting creates no row and consumes\nno quota; a URL nobody writes to, and bytes nobody confirms, are swept\nwith the rest of the expiring prefix. The URL writes to one key and\nnothing else, until `expires_at`, so a leaked URL can put bytes in one\nplace that nothing reads until this account confirms them.\n\nThis route has its own rate limit, separate from `POST /images` and\nfrom `POST /images/confirm`, so one mint and one confirm never exhaust\neither.\n",
+        "description": "The first half of a two-call upload that sends the bytes to storage\ndirectly rather than through this API. The bytes go raw rather than\nbase64, and they take the caller's own route to the storage bucket\ninstead of the route to this API, which from some networks is many\ntimes faster.\n\nThe response names an `upload_url`, the `headers` the PUT must carry\nunchanged, and the `path` the bytes will occupy. PUT the raw image\nbytes to `upload_url` with those headers. When the PUT answers 2xx,\nsend `path` to `POST /images/confirm`, which validates the image and\nreturns the same reference `POST /images` returns.\n\nNothing exists until confirmation. Minting creates no row; a URL\nnobody writes to, and bytes nobody confirms, are swept with the rest\nof the expiring prefix. The URL writes to one key and\nnothing else, until `expires_at`, so a leaked URL can put bytes in one\nplace that nothing reads until this account confirms them.\n\nThis route has its own rate limit, separate from `POST /images` and\nfrom `POST /images/confirm`, so one mint and one confirm never exhaust\neither.\n",
         "operationId": "createImageUploadUrl",
         "tags": [
           "Images"
@@ -197,7 +197,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "422": {
-            "description": "No slot was minted. Either the account's upload quota is full, or\nthis deployment cannot sign upload URLs, in which case the message\nsays to use `POST /images` instead.\n"
+            "description": "No slot was minted, because the account already has too many\nupload URLs written to but not yet confirmed. Confirm them, or let\nthem expire.\n"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -261,7 +261,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "422": {
-            "description": "The upload was refused. The message names the reason: nothing this\naccount staged is readable at that path (never written, already\nconfirmed, or staged for another account, which are deliberately\none message), an unsupported or unreadable format, a file over the\nsize or pixel limit, or the account's upload quota being full.\n"
+            "description": "The upload was refused. The message names the reason: nothing this\naccount staged is readable at that path (never written, already\nconfirmed, or staged for another account, which are deliberately\none message), an unsupported or unreadable format, or a file over\nthe size or pixel limit.\n"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -390,7 +390,7 @@
     "/models/{owner}/{name}": {
       "get": {
         "summary": "Get a specific AI model by owner + name",
-        "description": "Canonical lookup using the (owner, name) pair. Same response shape as\n`/models/{aiModel}`. Model names may contain a `/edit` variant suffix,\nwhich is captured as part of `{name}` (e.g. `/models/openai/gpt-image-1/edit`).\n",
+        "description": "Canonical lookup using the (owner, name) pair. Same response shape as\n`/models/{aiModel}`. Model names may contain a `/edit` variant suffix,\nwhich is captured as part of `{name}` (e.g. `/models/openai/gpt-image-1/edit`).\nHidden models are excluded by default. Set `include_hidden=1` with a JWT\nsession or API key to include them, regardless of member role. Organization\nallowlists still apply and deleted models are never returned.\n",
         "operationId": "getModelByOwnerAndName",
         "tags": [
           "Catalog"
@@ -416,6 +416,16 @@
               "example": "flux-1-kontext-pro"
             },
             "description": "Model name (may contain `/edit` suffix)"
+          },
+          {
+            "name": "include_hidden",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Include hidden models; requires authentication and preserves organization allowlists"
           }
         ],
         "responses": {
@@ -433,6 +443,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "404": {
             "description": "Model not found"
@@ -494,7 +507,7 @@
     "/process": {
       "post": {
         "summary": "Process an image generation request",
-        "description": "Submit an image generation request using either a model or a template.\nExactly one of `model_id` or `template_id` must be provided — they are\nmutually exclusive.\n\nWhen using `template_id`, the template's default inputs are merged with\nthe provided inputs (user input takes priority). The model is resolved\nfrom the template automatically.\n\nReturns a task resource. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n",
+        "description": "Submit an image generation request using either a model or a template.\nExactly one of `model_id`, `model_name` or `template_id` must be provided —\nthey are mutually exclusive.\n\nWhen using `template_id`, the template's default inputs are merged with\nthe provided inputs (user input takes priority). The model is resolved\nfrom the template automatically.\n\nReturns a task resource. Poll `GET /tasks/{id}` or stream\n`GET /tasks/{id}/stream` (SSE) for status updates and output.\n\nWith `sync: true` the request waits for the task, up to 60 seconds, and\nreturns it finished with its output. A task still running after that is\nreturned as it stands, for you to poll.\n",
         "operationId": "process",
         "tags": [
           "Processing"
@@ -516,13 +529,18 @@
                 "properties": {
                   "model_id": {
                     "type": "integer",
-                    "description": "AI model ID. Required if template_id is not provided.",
+                    "description": "AI model ID. Required if neither model_name nor template_id is provided.",
                     "example": 1
+                  },
+                  "model_name": {
+                    "type": "string",
+                    "description": "The model's full name, as listed by `GET /models`. Required if neither\nmodel_id nor template_id is provided. A name that matches no model your\norganization is shown is refused with a 422.\n",
+                    "example": "imagenhub/facecutout"
                   },
                   "template_id": {
                     "type": "string",
                     "format": "uuid",
-                    "description": "Template UUID. Required if model_id is not provided.",
+                    "description": "Template UUID. Required if neither model_id nor model_name is provided.",
                     "example": "019d29c5-9663-71c4-b698-9cbf898948d4"
                   },
                   "provider_id": {
@@ -556,6 +574,12 @@
                     "maxLength": 2048,
                     "description": "Where to POST the result once the task finishes, instead of polling\nfor it.\n\nOmit it and we use the default endpoint configured for your\norganization, if there is one. Send it as `null` to suppress the\ncallback for this task even when a default is set.\n\nMust be `https` and must not embed credentials\n(`https://user:pass@host` is rejected). Reserved: it is never passed\nto the model as a generation input.\n",
                     "example": "https://example.com/hooks/imagenhub"
+                  },
+                  "sync": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Wait for the task to finish, up to 60 seconds, and return it with its\noutput. Past 60 seconds the task is returned still running.\n",
+                    "example": true
                   },
                   "metadata": {
                     "type": [
@@ -912,7 +936,7 @@
       "post": {
         "summary": "Run a model synchronously",
         "deprecated": true,
-        "description": "**Deprecated.** This endpoint will be removed, on a date not set yet, and\nfrom then on answers `410 Gone`. Use `POST /process` with the model's\n`model_id` instead, then poll `GET /tasks/{task}` or stream\n`GET /tasks/{task}/stream` until the task finishes.\n\nSubmit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n\n`webhook_url` is not accepted here and returns 422 — the result comes back\nin this response, so there is nothing to call back about. Use the async\n`POST /process` for a callback.\n",
+        "description": "**Deprecated.** This endpoint will be removed, on a date not set yet, and\nfrom then on answers `410 Gone`. Use `POST /process` with the model's\n`model_name` and `sync: true` instead, which waits the same way.\n\nSubmit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n\n`webhook_url` is not accepted here and returns 422 — the result comes back\nin this response, so there is nothing to call back about. Use the async\n`POST /process` for a callback.\n",
         "operationId": "runModelSync",
         "tags": [
           "Processing"
@@ -1205,7 +1229,7 @@
     "/tasks/{task}": {
       "get": {
         "summary": "Get task status",
-        "description": "Returns the current status of a task. When status is `success`,\nthe `output` field contains CDN URLs to generated images. The URLs\ndo not expire. An API run's images are deleted once the retention\nwindow passes, and `output_expired` then says so.\n",
+        "description": "Returns the current status of a task. When status is `success`, the `output` field contains CDN URLs to generated images. The URLs do not expire. An API run's images are deleted once the retention window passes, and `output_expired` then says so.\n\n`logs` and `attempts` show how the run went: each provider it called, and whether it switched to its template's fallback, which `fallback_from` then names.\n",
         "operationId": "getTask",
         "tags": [
           "Processing"
@@ -1822,6 +1846,14 @@
                       "type": "string",
                       "format": "uuid"
                     }
+                  },
+                  "version_name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 255,
+                    "description": "A label for the version this save stores in the template's history.\nA save that changes nothing stores no version, so the name is not\nkept. A save that only swaps the model's image inputs stores no\nversion unless it is named.\n"
                   }
                 }
               }
@@ -1838,6 +1870,10 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/Template"
+                    },
+                    "unchanged": {
+                      "type": "boolean",
+                      "description": "True when the save changed nothing a version tracks, so no version\nwas stored and any `version_name` went unused.\n"
                     }
                   }
                 }
@@ -1854,7 +1890,7 @@
             "description": "Template not found"
           },
           "422": {
-            "description": "Validation error"
+            "description": "Validation error. Also returned, on `version`, when the template holds\nits limit of 50 versions and the save would store another: nothing is\nremoved on its own, so delete a version first.\n"
           }
         }
       },
@@ -1904,7 +1940,7 @@
     "/templates/{template}/duplicate": {
       "post": {
         "summary": "Duplicate template",
-        "description": "Copy a template the organization may use (its own, or a visible public\none) into a new template the organization owns. The copy is named after\nthe original with ` Copy` appended, and carries its description, model,\ndefault inputs, extra input, prompt variables and post-processing.\n\nCategories are kept only where the organization owns them, so a public\ntemplate's categories are dropped. A fallback template is kept only if\nthe organization may use it too; otherwise the copy has none.\n\nThe thumbnail and every stored default-input image are copied inside\nstorage, so the copy owns its own files: editing or deleting either\ntemplate never touches the other's. Nothing is downloaded by URL. The\ncopy keeps the original's `thumbnail_custom`. An original with no\nthumbnail, or one whose file is missing, gives a copy with none, and the\nnext successful run generates it.\n\nTakes no request body.\n",
+        "description": "Copy a template the organization may use (its own, or a visible public\none) into a new template the organization owns. The copy is named after\nthe original with ` Copy` appended, and carries its description, model,\ndefault inputs, extra input, prompt variables and post-processing.\n\nCategories are kept only where the organization owns them, so a public\ntemplate's categories are dropped. A fallback template is kept only if\nthe organization may use it too; otherwise the copy has none.\n\nThe thumbnail and every stored default-input image are copied inside\nstorage, so the copy owns its own files: editing or deleting either\ntemplate never touches the other's. Nothing is downloaded by URL. The\ncopy keeps the original's `thumbnail_custom`. An original with no\nthumbnail, or one whose file is missing, gives a copy with none, and the\nnext successful run generates it.\n\nThe copy's history starts with one version of its own. The original's\nversions are not copied.\n\nTakes no request body.\n",
         "operationId": "duplicateTemplate",
         "tags": [
           "Templates"
@@ -1956,6 +1992,458 @@
           },
           "422": {
             "description": "The template names no model, so there is nothing for the copy to run.\nThe error is reported on `model_id`. A model that has since been\ndeleted or hidden is not refused: the copy keeps it, as the original does.\n"
+          }
+        }
+      }
+    },
+    "/templates/{template}/versions": {
+      "get": {
+        "summary": "List template versions",
+        "description": "The template's saved versions, newest first, five to a page unless\n`per_page` asks for more. Each create,\nupdate and duplicate stores the template as that save left it. A save that\nchanges nothing, or only swaps the model's image inputs, stores none.\n\nVersions are the organization's own: a public template lists none.\n",
+        "operationId": "listTemplateVersions",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Template UUID"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 5
+            },
+            "description": "Versions per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TemplateVersion"
+                      }
+                    },
+                    "links": {
+                      "$ref": "#/components/schemas/PaginationLinks"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "current_version_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uuid",
+                      "description": "The newest version, on every page"
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "description": "How many versions a template may hold",
+                      "example": 50
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to view this template"
+          },
+          "404": {
+            "description": "Template not found"
+          }
+        }
+      }
+    },
+    "/templates/{template}/versions/{version}": {
+      "get": {
+        "summary": "Get template version",
+        "description": "One version in full: the template as that save left it, its model with the\ninput schema, and how it compares with the template now.\n",
+        "operationId": "getTemplateVersion",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TemplatePath"
+          },
+          {
+            "$ref": "#/components/parameters/TemplateVersionPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TemplateVersionDetail"
+                    },
+                    "differs_from_current": {
+                      "type": "array",
+                      "description": "The fields on which the version differs from the template now.\nImage inputs and the thumbnail are compared by content, so the same\npicture uploaded again is no difference. Empty when the version is\nthe template as it is now.\n",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "name",
+                        "default_inputs"
+                      ]
+                    },
+                    "revertible": {
+                      "type": "boolean",
+                      "description": "Whether reverting would change anything: false exactly when\n`differs_from_current` is empty, and a revert is then refused.\n"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to view this template"
+          },
+          "404": {
+            "description": "Template or version not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Name a template version",
+        "description": "Name a version, or clear its name. The template itself is not changed.",
+        "operationId": "renameTemplateVersion",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TemplatePath"
+          },
+          {
+            "$ref": "#/components/parameters/TemplateVersionPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 255,
+                    "description": "The new name; null or an empty string clears it",
+                    "example": "Before the rebrand"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The version, renamed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TemplateVersion"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to change this template"
+          },
+          "404": {
+            "description": "Template or version not found"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a template version",
+        "description": "Delete a version for good, releasing its files, to make room under the\nlimit of 50. The template itself is not changed. The newest version is\nrefused.\n",
+        "operationId": "deleteTemplateVersion",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TemplatePath"
+          },
+          {
+            "$ref": "#/components/parameters/TemplateVersionPath"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Version deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to change this template"
+          },
+          "404": {
+            "description": "Template or version not found"
+          },
+          "422": {
+            "description": "The version is the newest. The error is reported on `version`."
+          }
+        }
+      }
+    },
+    "/templates/{template}/versions/{version}/revert": {
+      "post": {
+        "summary": "Revert a template to a version",
+        "description": "Restore the template to a version: its fields, inputs, thumbnail and\ncategories. The version keeps its own files, and the revert is recorded as\nthe newest version, labelled by the fields that differed. A fallback\ntemplate the organization can no longer use, or a category since deleted,\nis left out.\n\nTakes no request body.\n",
+        "operationId": "revertTemplateVersion",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TemplatePath"
+          },
+          {
+            "$ref": "#/components/parameters/TemplateVersionPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The template, reverted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Template"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to change this template"
+          },
+          "404": {
+            "description": "Template or version not found"
+          },
+          "422": {
+            "description": "The version is already what the template is now, or the model it used\nno longer exists, or the template holds its limit of versions. The error\nis reported on `version`.\n"
+          }
+        }
+      }
+    },
+    "/templates/{template}/versions/{version}/template": {
+      "post": {
+        "summary": "Make a new template from a version",
+        "description": "Create a template the organization owns from a version, under a name of its\nown, with optional changes made on the way. It takes the version's fields,\npost-processing, fallback (if still usable) and categories, with copies of\nits images and thumbnail, then applies the changes as an update would. Its\nhistory is one version, \"Created\", showing it as it ended up.\n\nThe model is the version's and cannot be changed here. The original template\nand the version are left alone. If a change is refused, nothing is created.\n",
+        "operationId": "createTemplateFromVersion",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TemplatePath"
+          },
+          {
+            "$ref": "#/components/parameters/TemplateVersionPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "description": "`name`, and any of the fields `PUT /templates/{template}` takes apart\nfrom `model_id`, under the same rules. An image input left as the\nversion names it is given the new template's own copy.\n",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Product photo, the early one"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "default_inputs": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "category_ids": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "thumbnail_path": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "prompt_variables": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "$ref": "#/components/schemas/PromptVariable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Template created, in the same shape `POST /templates` returns",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Template"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to use this template, or not allowed to manage templates"
+          },
+          "404": {
+            "description": "Template or version not found"
+          },
+          "422": {
+            "description": "Validation error, or the version's model no longer exists (reported on\n`version`).\n"
           }
         }
       }
@@ -2854,6 +3342,28 @@
         "description": "JWT token obtained from /auth/login"
       }
     },
+    "parameters": {
+      "TemplatePath": {
+        "name": "template",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Template UUID"
+      },
+      "TemplateVersionPath": {
+        "name": "version",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Template version UUID"
+      }
+    },
     "schemas": {
       "ProblemDetails": {
         "type": "object",
@@ -3336,6 +3846,182 @@
             "type": "boolean",
             "description": "True once the retention window has deleted an output image; its place in `output` holds null."
           },
+          "model": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The model the task ran on. After a switch to the template's fallback, this is the fallback's model.",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 12
+              },
+              "name": {
+                "type": "string",
+                "example": "google/gemini-2.5-flash-image/edit"
+              },
+              "display_name": {
+                "type": "string",
+                "example": "Nano Banana Edit(Gemini 2.5)"
+              },
+              "owner": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "slug": {
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the task failed, `null` unless status is `error`."
+          },
+          "fallback_from": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Set when the run switched to its template's fallback, naming the model it started on and why that model failed. `null` when the run never switched.",
+            "properties": {
+              "model_id": {
+                "type": "integer",
+                "example": 7
+              },
+              "model": {
+                "type": "string",
+                "example": "google/gemini-3-pro-image/edit"
+              },
+              "reason": {
+                "type": "string",
+                "example": "No provider could process this request"
+              }
+            }
+          },
+          "logs": {
+            "type": "array",
+            "description": "The run's log, oldest first. Returned by `GET /tasks/{task}` only.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "info",
+                    "warn",
+                    "error"
+                  ],
+                  "example": "warn"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "provider replicate timed out after 120s"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-10-27T03:22:01+00:00"
+                }
+              }
+            }
+          },
+          "attempts": {
+            "type": "array",
+            "description": "Every call made to a provider for this run, its post-processing steps included, in the order they were sent. Returned by `GET /tasks/{task}` only.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "task_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "The task the call belongs to, this one or one of its post-processing steps."
+                },
+                "chain_step": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "The post-processing step's number, `null` for the generation itself.",
+                  "example": null
+                },
+                "provider": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "example": "Replicate"
+                },
+                "model": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The model this call ran.",
+                  "example": "google/gemini-2.5-flash-image/edit"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "success",
+                    "user_error",
+                    "error"
+                  ],
+                  "example": "success"
+                },
+                "status_code": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "The provider's HTTP status.",
+                  "example": 200
+                },
+                "billing_source": {
+                  "type": "string",
+                  "enum": [
+                    "byok",
+                    "system"
+                  ],
+                  "description": "`byok` when the call used your own provider key.",
+                  "example": "system"
+                },
+                "credit_cost": {
+                  "type": "integer",
+                  "description": "Credits charged for this call. A failed call and a call on your own key cost 0."
+                },
+                "duration": {
+                  "type": "string",
+                  "description": "Seconds the call took, as a decimal string.",
+                  "example": "12.4031"
+                },
+                "sent_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "ended_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              }
+            }
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -3696,6 +4382,168 @@
             "format": "date-time"
           }
         }
+      },
+      "TemplateVersion": {
+        "type": "object",
+        "description": "One saved version of a template, as a list shows it.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A label someone gave it",
+            "example": "Before the rebrand"
+          },
+          "changed": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "description": "The fields the save moved; null for the version a template was created with",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "name",
+              "description"
+            ]
+          },
+          "author": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The staff member who saved it; null when an API key did",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TemplateVersionDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TemplateVersion"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "snapshot": {
+                "type": "object",
+                "description": "The template as that save left it. Image inputs and the thumbnail name\ncopies the version owns.\n",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "model_id": {
+                    "type": "integer"
+                  },
+                  "default_inputs": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "extra_input": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "prompt_variables": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "$ref": "#/components/schemas/PromptVariable"
+                    }
+                  },
+                  "post_processing": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "fallback_template_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "category_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "thumbnail_state": {
+                    "type": "string",
+                    "enum": [
+                      "stale",
+                      "fresh",
+                      "custom"
+                    ]
+                  },
+                  "thumbnail": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uri",
+                    "description": "CDN URL of the version's own thumbnail"
+                  },
+                  "thumbnail_custom": {
+                    "type": "boolean"
+                  },
+                  "image_previews": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "description": "URLs that render the version's image inputs, by input name"
+                  }
+                }
+              },
+              "model": {
+                "description": "The model the version ran, even if since deleted; null when it no longer exists at all",
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/AiModel"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        ]
       },
       "Category": {
         "type": "object",
