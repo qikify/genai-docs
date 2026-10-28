@@ -93,8 +93,10 @@ A few common questions:
 - **Deleting an organization** isn't self-service — contact support if you need this.
 - **Custom roles** aren't supported; the four roles above are fixed.
 - **Templates can't be recovered after leaving an org** — they belong to the org, and access ends when your membership does.
+- **Only Owners and Admins can lock a template.** A locked template can't be changed by anyone until it is unlocked — see [Template Lock](./template-lock.md).
 
 ## Next steps
 
 - [Authentication](./authentication.md) — how API keys and logins work.
 - [Templates](./templates.md) — the reusable presets your org shares.
+- [Template Lock](./template-lock.md) — freeze a finished template so nobody can change it.
