@@ -76,3 +76,7 @@ The template's `default_inputs` are merged with your request body. If the templa
   }
 }
 ```
+
+## Locking a template
+
+Owners and admins can lock a finished template so nobody can edit, revert or delete it while it keeps running as usual. See [Template Lock](./template-lock.md).
