@@ -89,6 +89,17 @@ On success, the `output` field contains an array of image URLs on our CDN:
 
 The URLs do not expire, but an API run's images are deleted after **30 days**. From then on `output_expired` is `true` and `output` holds `null` in their place, so download anything you want to keep.
 
+## Showing an input image
+
+Input images come back the way they were stored. An image field such as `image_urls`, in a task's `input` or a template's `default_inputs`, holds a URL where one was sent, and otherwise a storage path, such as the `path` that `POST /images` returns. To show a path, put it after our CDN's address:
+
+```text
+u/0199f0c1-7b2e-7a10-8c3d-5e6f7a8b9c0d/in/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90.jpg
+→ https://cdn.imagenhub.ai/u/0199f0c1-7b2e-7a10-8c3d-5e6f7a8b9c0d/in/0199f0c2-8a3e-7c31-9f4d-2b6e1a5c7d90.jpg
+```
+
+An upload's link works until the upload's `expires_at`. A template keeps its own copy of each image it saves, under a path of its own, and keeps it for good.
+
 ## Using templates
 
 Instead of specifying `model_id` and all parameters, you can use a template:
