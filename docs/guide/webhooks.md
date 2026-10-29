@@ -1,11 +1,12 @@
 # Webhooks
 
-ImagenHub can POST to a URL you own instead of making you poll. Two different things travel out that way, and they are set up in two different places:
+ImagenHub can POST to a URL you own instead of making you poll. Three different things travel out that way, and they are set up in different places:
 
 - **Task callbacks** tell you one generation finished. They answer a request you made, and they go to the URL that request nominated.
+- **Event webhooks** tell you something happened in your organization, such as a template being created. They go to the **event webhooks** you add, each to the events it ticked.
 - **Account alerts** tell you something is wrong with your account that will keep generations failing until you act. Nobody asked for these; they arrive because a problem started. They go to the **alert channels** you configure, and an account can have several.
 
-Both are retried on the same schedule, and a channel that points at your own server carries the same envelope and the same signature as a task callback, so one receiver can handle both.
+All three are retried on the same schedule, and whatever reaches your own server carries the same envelope and the same kind of signature, so one receiver can handle them all.
 
 ## Task callbacks
 
@@ -56,6 +57,55 @@ Sending `"webhook_url": null` suppresses the callback for that one generation, e
 `occurred_at` is when the task finished, not when the attempt was sent. After a retry backlog clears, a burst of events arrives at once and this is what tells them apart.
 
 Every key is always present, `null` where it does not apply, so a statically typed receiver decodes one fixed shape.
+
+## Event webhooks
+
+In the portal, under **Webhooks**, the **Event webhooks** card lists where your organization's events go. **Add webhook** takes a URL and the events to send it. An organization can have up to 16, and each is sent only the events it ticked.
+
+Each event webhook has **its own secret**, made when you add it and shown in the list. Its deliveries are signed with that secret, not with your organization's signing secret, so replacing one never touches the others.
+
+### What you can subscribe to
+
+| Event | Sent when |
+|---|---|
+| `template.created` | Someone in your organization creates a template, duplicates one, or saves a version of one as a new template |
+
+### `template.created` payload
+
+```json
+{
+  "id": "evt_9f0c1b2e-4a7d-4b1c-9e3a-2f5c7d8e1a0b",
+  "type": "template.created",
+  "occurred_at": "2026-10-29T05:15:39+00:00",
+  "data": {
+    "id": "01a18625-02d6-71a6-8e7f-2c7184a6b757",
+    "user_id": 8,
+    "name": "Product on white",
+    "description": null,
+    "thumbnail": null,
+    "thumbnail_custom": false,
+    "default_inputs": { "prompt": "the product on a white background" },
+    "extra_input": null,
+    "prompt_variables": null,
+    "post_processing": null,
+    "fallback_template_id": null,
+    "locked_at": null,
+    "model_id": 31,
+    "categories": [
+      {
+        "id": "01a0d1ef-a9b2-701c-9358-649c8c7e9b76",
+        "name": "Mugs",
+        "created_at": "2026-10-20T08:02:11.000000Z",
+        "updated_at": "2026-10-20T08:02:11.000000Z"
+      }
+    ],
+    "created_at": "2026-10-29T05:15:39.000000Z",
+    "updated_at": "2026-10-29T05:15:39.000000Z"
+  }
+}
+```
+
+`data` is the template as `GET /api/templates/{id}` returns it, without `model`: `model_id` names the model, and that endpoint gives it in full. `occurred_at` is when the template was created.
 
 ## Account alerts
 
@@ -236,7 +286,7 @@ The body is JSON with placeholders written as `{{VARIABLE}}`, substituted into s
 
 ## Verifying the signature
 
-This covers task callbacks and any alert channel pointing at your own server. Lark channels are verified by Lark's own scheme, described above.
+This covers task callbacks, event webhooks, and any alert channel pointing at your own server. Lark channels are verified by Lark's own scheme, described above.
 
 Deliveries follow the [Standard Webhooks](https://www.standardwebhooks.com/) specification, so you can verify with an off-the-shelf library rather than implementing our prose. Libraries exist for JavaScript, Python, Go, Ruby, Java, C#, Rust, Elixir and PHP.
 
@@ -270,9 +320,9 @@ app.post('/hooks/imagenhub', express.raw({ type: 'application/json' }), (req, re
 });
 ```
 
-Every channel pointing at your own server signs with your organization's secret, the same one task callbacks use, so adding a channel does not add a secret to manage.
+Every channel pointing at your own server signs with your organization's secret, the same one task callbacks use, so adding a channel does not add a secret to manage. An event webhook is the exception: verify it with its own secret, shown beside it in the list.
 
-During a secret rotation the header carries **two** signatures, one per live secret, so your integration keeps verifying whether or not it has picked up the new secret yet. Standard Webhooks libraries handle this for you.
+During a secret rotation the header carries **two** signatures, one per live secret, so your integration keeps verifying whether or not it has picked up the new secret yet. Standard Webhooks libraries handle this for you. An event webhook's secret is not rotated; to replace one, add a new webhook and remove the old one.
 
 ## Delivery
 
@@ -303,4 +353,4 @@ Return `2xx` as soon as you have stored the event, then process it from your own
 
 ## Checking deliveries
 
-The portal's **Webhooks** page shows delivery counts and a failure rate for the last 24 hours, broken down by the host each delivery went to, which is the fastest way to answer "are my callbacks landing". Alert deliveries appear there alongside task callbacks. Channel tests do not, because they describe nothing that happened.
+The portal's **Webhooks** page shows delivery counts and a failure rate for the last 24 hours, broken down by the host each delivery went to, which is the fastest way to answer "are my callbacks landing". Alert deliveries appear there alongside task callbacks. Channel tests do not, because they describe nothing that happened. Event webhook deliveries do not appear there yet.
