@@ -1884,7 +1884,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Not authorized to update this template"
+            "description": "Not authorized to update this template, or the template is locked"
           },
           "404": {
             "description": "Template not found"
@@ -1929,7 +1929,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Not authorized to delete this template"
+            "description": "Not authorized to delete this template, or the template is locked"
           },
           "404": {
             "description": "Template not found"
@@ -1940,7 +1940,7 @@
     "/templates/{template}/duplicate": {
       "post": {
         "summary": "Duplicate template",
-        "description": "Copy a template the organization may use (its own, or a visible public\none) into a new template the organization owns. The copy is named after\nthe original with ` Copy` appended, and carries its description, model,\ndefault inputs, extra input, prompt variables and post-processing.\n\nCategories are kept only where the organization owns them, so a public\ntemplate's categories are dropped. A fallback template is kept only if\nthe organization may use it too; otherwise the copy has none.\n\nThe thumbnail and every stored default-input image are copied inside\nstorage, so the copy owns its own files: editing or deleting either\ntemplate never touches the other's. Nothing is downloaded by URL. The\ncopy keeps the original's `thumbnail_custom`. An original with no\nthumbnail, or one whose file is missing, gives a copy with none, and the\nnext successful run generates it.\n\nThe copy's history starts with one version of its own. The original's\nversions are not copied.\n\nTakes no request body.\n",
+        "description": "Copy a template the organization may use (its own, or a visible public\none) into a new template the organization owns. The copy is named after\nthe original with ` Copy` appended, and carries its description, model,\ndefault inputs, extra input, prompt variables and post-processing.\n\nCategories are kept only where the organization owns them, so a public\ntemplate's categories are dropped. A fallback template is kept only if\nthe organization may use it too; otherwise the copy has none.\n\nThe thumbnail and every stored default-input image are copied inside\nstorage, so the copy owns its own files: editing or deleting either\ntemplate never touches the other's. Nothing is downloaded by URL. The\ncopy keeps the original's `thumbnail_custom`. An original with no\nthumbnail, or one whose file is missing, gives a copy with none, and the\nnext successful run generates it.\n\nThe copy's history starts with one version of its own. The original's\nversions are not copied. A locked template can be duplicated, and the copy\nstarts unlocked.\n\nTakes no request body.\n",
         "operationId": "duplicateTemplate",
         "tags": [
           "Templates"
@@ -1992,6 +1992,102 @@
           },
           "422": {
             "description": "The template names no model, so there is nothing for the copy to run.\nThe error is reported on `model_id`. A model that has since been\ndeleted or hidden is not refused: the copy keeps it, as the original does.\n"
+          }
+        }
+      }
+    },
+    "/templates/{template}/lock": {
+      "put": {
+        "summary": "Lock template",
+        "description": "Lock a template against every change until it is unlocked, so a template\nthat is running cannot change by mistake. While it is locked, an update, a\ndelete, a revert, and naming or deleting a version are all refused with\n403, the owner's and admin's included. It still runs, and it can still be\nduplicated or made into a new template from a version.\n\nLocking stores no version. Locking a locked template keeps the time it was\nfirst locked. Members need the owner or admin role; an API key may lock.\n\nTakes no request body.\n",
+        "operationId": "lockTemplate",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TemplatePath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The template, locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Template"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not the organization's template, or the member is not an owner or admin"
+          },
+          "404": {
+            "description": "Template not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Unlock template",
+        "description": "Unlock a template, so it can be changed again. Unlocking an unlocked\ntemplate changes nothing.\n",
+        "operationId": "unlockTemplate",
+        "tags": [
+          "Templates"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "jwtAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TemplatePath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The template, unlocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Template"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Not the organization's template, or the member is not an owner or admin"
+          },
+          "404": {
+            "description": "Template not found"
           }
         }
       }
@@ -2228,7 +2324,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Not authorized to change this template"
+            "description": "Not authorized to change this template, or the template is locked"
           },
           "404": {
             "description": "Template or version not found"
@@ -2269,7 +2365,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Not authorized to change this template"
+            "description": "Not authorized to change this template, or the template is locked"
           },
           "404": {
             "description": "Template or version not found"
@@ -2324,7 +2420,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Not authorized to change this template"
+            "description": "Not authorized to change this template, or the template is locked"
           },
           "404": {
             "description": "Template or version not found"
@@ -4373,6 +4469,14 @@
               "$ref": "#/components/schemas/Category"
             }
           },
+          "locked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When an owner or admin locked the template, null while it is unlocked.\nA locked template still runs and can be duplicated, but every change to\nit is refused with 403 until it is unlocked: an update, a delete, a\nrevert, and naming or deleting a version.\n"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -4751,6 +4855,14 @@
             "items": {
               "$ref": "#/components/schemas/Category"
             }
+          },
+          "locked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When an owner or admin locked the template, null while it is unlocked.\nA locked template still runs and can be duplicated, but every change to\nit is refused with 403 until it is unlocked: an update, a delete, a\nrevert, and naming or deleting a version.\n"
           },
           "created_at": {
             "type": "string",

@@ -14,7 +14,7 @@ If you are still iterating on a template, leave it unlocked. Lock is entirely op
 
 ## How it works
 
-Locking is a switch on the template. Only an **Owner** or an **Admin** can turn it on or off (see [Roles](./organization.md#roles)). Editors and Viewers cannot.
+Locking is a switch on the template. Only an **Owner** or an **Admin** can turn it on or off (see [Roles](./organization.md#roles)). Editors and Viewers cannot. Your organization's API keys can turn it on or off too: see [Locking through the API](#locking-through-the-api).
 
 | While a template is locked | What happens |
 | --- | --- |
@@ -72,9 +72,29 @@ The model, inputs, post-processing steps and fallback template are still display
 
 ![A locked template still shows its post-processing steps and its fallback template. They can be read, not changed, and the template can still be run.](./assets/tl-readonly-sections.png)
 
-If you update a locked template through the AI Assistant (MCP) or the API, the request is rejected and the template is left untouched. In MCP the message reads: "This template is locked. An owner or admin has to unlock it before it can be changed."
+If you update a locked template through the AI Assistant (MCP) or the API, the request is rejected and the template is left untouched. The API answers `403`, and the message, in MCP as in the API, reads: "This template is locked. An owner or admin has to unlock it before it can be changed."
 
-Templates returned by the API and MCP include a `locked_at` timestamp. It is `null` for an unlocked template and holds the time of locking for a locked one.
+## Locking through the API
+
+Lock and unlock are two calls, so your own integration can lock a template once it is approved, without anyone opening the web app:
+
+```bash
+# Lock
+curl -X PUT https://api.imagenhub.ai/api/templates/019d29c5-9663-71c4-b698-9cbf898948d4/lock \
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
+
+# Unlock
+curl -X DELETE https://api.imagenhub.ai/api/templates/019d29c5-9663-71c4-b698-9cbf898948d4/lock \
+  -H "Authorization: Bearer sk_igh_YOUR_KEY"
+```
+
+Both answer with the template. Its `locked_at` holds the time it was locked, or `null` once it is unlocked. Locking a template that is already locked changes nothing and keeps the first time, so a script may lock the same template again safely.
+
+An API key may lock and unlock any of your organization's own templates. The Owner and Admin rule applies to members signed in to the web app, not to keys. Public templates cannot be locked.
+
+To decide which templates to lock, list your own with `GET /templates?ownership=private&per_page=100`. Each one carries `locked_at` and `updated_at`. Locking and unlocking both move `updated_at`, so a template unlocked for an edit counts as just changed.
+
+The full reference is on the [Templates](/api/templates) page of the API reference.
 
 ## Version history on a locked template
 
