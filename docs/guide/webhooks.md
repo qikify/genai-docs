@@ -69,6 +69,7 @@ Each event webhook has **its own secret**, made when you add it and shown in the
 | Event | Sent when |
 |---|---|
 | `template.created` | Someone in your organization creates a template, duplicates one, or saves a version of one as a new template |
+| `template.updated` | Someone in your organization edits, reverts, locks or unlocks a template, or files it into or out of a category, or a generation from it gives it a new thumbnail |
 
 ### `template.created` payload
 
@@ -106,6 +107,48 @@ Each event webhook has **its own secret**, made when you add it and shown in the
 ```
 
 `data` is the template as `GET /api/templates/{id}` returns it, without `model`: `model_id` names the model, and that endpoint gives it in full. `occurred_at` is when the template was created.
+
+### `template.updated` payload
+
+```json
+{
+  "id": "evt_5b2d8e41-7c3a-4f9e-b1d6-0a8c3e7f2d14",
+  "type": "template.updated",
+  "occurred_at": "2026-10-30T02:41:07+00:00",
+  "changed": ["locked_at"],
+  "data": {
+    "id": "01a18625-02d6-71a6-8e7f-2c7184a6b757",
+    "user_id": 8,
+    "name": "Product on white",
+    "description": null,
+    "thumbnail": null,
+    "thumbnail_custom": false,
+    "default_inputs": { "prompt": "the product on a white background" },
+    "extra_input": null,
+    "prompt_variables": null,
+    "post_processing": null,
+    "fallback_template_id": null,
+    "locked_at": "2026-10-30T02:41:07.000000Z",
+    "model_id": 31,
+    "categories": [
+      {
+        "id": "01a0d1ef-a9b2-701c-9358-649c8c7e9b76",
+        "name": "Mugs",
+        "created_at": "2026-10-20T08:02:11.000000Z",
+        "updated_at": "2026-10-20T08:02:11.000000Z"
+      }
+    ],
+    "created_at": "2026-10-29T05:15:39.000000Z",
+    "updated_at": "2026-10-30T02:41:07.000000Z"
+  }
+}
+```
+
+`data` is the whole template after the change, in the same shape as `template.created`'s, so replace your copy with it rather than merging. `changed` names the keys of `data` that differ from before: `["locked_at"]` for a lock or an unlock, `["categories"]` when the template was filed into or out of a category, and every field one save edited. It never lists `updated_at`.
+
+`occurred_at` is the template's `updated_at` after the change. A retry can deliver two updates to one template out of order, so keep the one with the later `occurred_at` and drop an older one. Both are to the second: when two carry the same time, read the template with `GET /api/templates/{id}`.
+
+A write that leaves the template as it was sends nothing, such as a save that changes no field, or locking a template that is already locked. Renaming or deleting a category sends nothing either, so read the template again if you show its categories' names.
 
 ## Account alerts
 
