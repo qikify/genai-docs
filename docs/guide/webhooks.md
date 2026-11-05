@@ -3,7 +3,7 @@
 ImagenHub can POST to a URL you own instead of making you poll. Three different things travel out that way, and they are set up in different places:
 
 - **Task callbacks** tell you one generation finished. They answer a request you made, and they go to the URL that request nominated.
-- **Event webhooks** tell you something happened in your organization, such as a template being created. They go to the **event webhooks** you add, each to the events it ticked.
+- **Event webhooks** tell you something happened in your organization, such as a template being created or a generation finishing. They go to the **event webhooks** you add, each to the events it ticked.
 - **Account alerts** tell you something is wrong with your account that will keep generations failing until you act. Nobody asked for these; they arrive because a problem started. They go to the **alert channels** you configure, and an account can have several.
 
 All three are retried on the same schedule, and whatever reaches your own server carries the same envelope and the same kind of signature, so one receiver can handle them all.
@@ -46,6 +46,7 @@ Sending `"webhook_url": null` suppresses the callback for that one generation, e
     "status": "success",
     "post_processing_status": null,
     "model": "flux-schnell",
+    "template_id": "01a18625-02d6-71a6-8e7f-2c7184a6b757",
     "output": ["https://cdn.imagenhub.ai/outputs/0198f2a1/0.png"],
     "error": null
   }
@@ -54,13 +55,15 @@ Sending `"webhook_url": null` suppresses the callback for that one generation, e
 
 `type` is `task.succeeded` when the generation produced output and `task.failed` when it did not. A run whose post-processing failed still arrives as `task.succeeded`, because you did get an image; check `post_processing_status` to learn it is not the image you asked for.
 
+`template_id` is the template the generation ran from, `null` for a freeform one.
+
 `occurred_at` is when the task finished, not when the attempt was sent. After a retry backlog clears, a burst of events arrives at once and this is what tells them apart.
 
 Every key is always present, `null` where it does not apply, so a statically typed receiver decodes one fixed shape.
 
 ## Event webhooks
 
-In the portal, under **Webhooks**, the **Event webhooks** card lists where your organization's events go. **Add webhook** takes a URL and the events to send it. An organization can have up to 16, and each is sent only the events it ticked.
+In the portal, under **Webhooks**, the **Event webhooks** card lists where your organization's events go. **Add webhook** takes a URL and the events to send it. A new webhook starts with nothing ticked. An organization can have up to 16, and each is sent only the events it ticked.
 
 Each event webhook has **its own secret**, made when you add it and shown in the list. Its deliveries are signed with that secret, not with your organization's signing secret, so replacing one never touches the others.
 
@@ -70,6 +73,8 @@ Each event webhook has **its own secret**, made when you add it and shown in the
 |---|---|
 | `template.created` | Someone in your organization creates a template, duplicates one, or saves a version of one as a new template |
 | `template.updated` | Someone in your organization edits, reverts, locks or unlocks a template, or files it into or out of a category, or a generation from it gives it a new thumbnail |
+| `task.succeeded` | A generation your organization submitted gives its output |
+| `task.failed` | A generation your organization submitted ends without output |
 
 ### `template.created` payload
 
@@ -150,6 +155,20 @@ Each event webhook has **its own secret**, made when you add it and shown in the
 
 A write that leaves the template as it was sends nothing, such as a save that changes no field, or locking a template that is already locked. Renaming or deleting a category sends nothing either, so read the template again if you show its categories' names.
 
+### `task.succeeded` and `task.failed` payload
+
+The body is the [task callback payload](#task-callback-payload), so one receiver reads both the same way. These events are sent once per generation, so tick them only on a webhook that can take your whole volume.
+
+They differ from a task callback in a few ways:
+
+- They fire for every generation your organization submits, wherever it started and whether or not its request named a callback URL.
+- A generation with both a callback and an event webhook produces two deliveries with two event ids. Correlate them on `data.task_id`.
+- Task callbacks are delivered first, so when receivers are slow, these events can arrive after the callback for the same generation.
+
+A generation with post-processing sends one event, for the generation you submitted, and none for its steps. One whose post-processing failed still arrives as `task.succeeded`, as on a callback; check `post_processing_status`.
+
+A generation that failed and was picked up again sends `task.failed` and later `task.succeeded`. Keep the one with the later `occurred_at`, or read `GET /api/tasks/{id}`, which is always the current answer.
+
 ## Account alerts
 
 A task callback reports one generation. An alert reports a condition on the account itself, which persists until somebody fixes it and fails every request in the meantime.
@@ -180,7 +199,7 @@ If you configured account alerts before channels existed, your previous setup wa
 | `provider_key.invalid` | Your own key for a provider was rejected as invalid. | Replacing the key in the portal. Clears on the first generation that succeeds with it. |
 | `credits.exhausted` | A generation was refused because your ImagenHub balance could not cover it. | Buying credits, or waiting for the monthly quota to renew. Clears on the next generation that is charged successfully. |
 
-`task.succeeded` is deliberately not offered on a channel. Delivering the result of a working generation is what task callbacks are for, and a destination subscribed to it would be receiving a transcript rather than an alert.
+`task.succeeded` is deliberately not offered on a channel. Delivering the result of a working generation is what task callbacks and event webhooks are for, and a destination subscribed to it would be receiving a transcript rather than an alert.
 
 Event types are permanent. New ones may be added, so treat an unfamiliar `type` as something to ignore rather than an error.
 
