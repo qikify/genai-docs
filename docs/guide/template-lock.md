@@ -94,6 +94,8 @@ An API key may lock and unlock any of your organization's own templates. The Own
 
 To decide which templates to lock, list your own with `GET /templates?ownership=private&per_page=100`. Each one carries `locked_at` and `updated_at`. Locking and unlocking both move `updated_at`, so a template unlocked for an edit counts as just changed.
 
+To lock every template that has not changed for a while, without clicking **Lock** on each one, run a scheduled job built on these calls. See [Auto-lock Templates](./auto-lock-templates.md).
+
 The full reference is on the [Templates](/api/templates) page of the API reference.
 
 ## Version history on a locked template
@@ -122,5 +124,6 @@ If an editor needs to change a locked template, ask an owner or an admin to unlo
 ## Next steps
 
 - [Templates](./templates.md): how reusable presets store their inputs.
+- [Auto-lock Templates](./auto-lock-templates.md): lock every template that has not changed for a waiting period, with a scheduled job.
 - [Fallback Template](./fallback-template.md): a backup template for when a model fails.
 - [Organization](./organization.md): roles and what each of them can do.
