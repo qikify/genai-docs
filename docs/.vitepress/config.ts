@@ -1,6 +1,8 @@
 import { copyFile, mkdir, readdir } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { defineConfig } from 'vitepress'
+import { readSpec } from './read-spec'
+import { specTags } from './spec-tags'
 
 export default defineConfig({
   title: 'ImagenHub',
@@ -10,6 +12,11 @@ export default defineConfig({
   // The host (DigitalOcean App Platform) serves /foo from foo/index.html but never tries
   // foo.html, so every page is also written in the folder layout VitePress prescribes for
   // such hosts: https://vitepress.dev/guide/routing#generating-clean-urls
+  // An API tag page has no heading of its own to take a title from: see [tag].paths.ts.
+  transformPageData(pageData) {
+    if (pageData.params?.name) pageData.title = pageData.params.name
+  },
+
   async buildEnd({ outDir }) {
     for (const file of await readdir(outDir, { recursive: true })) {
       if (!file.endsWith('.html') || basename(file) === 'index.html' || file === '404.html') continue
@@ -130,34 +137,8 @@ export default defineConfig({
           ],
         },
         {
-          text: 'Utility',
-          items: [{ text: 'Ping', link: '/api/ping' }],
-        },
-        {
-          text: 'Catalog',
-          items: [
-            { text: 'Models', link: '/api/models' },
-            { text: 'Providers', link: '/api/providers' },
-          ],
-        },
-        {
-          text: 'Processing',
-          items: [
-            { text: 'Submit Request', link: '/api/process' },
-            { text: 'Task Status', link: '/api/tasks' },
-          ],
-        },
-        {
-          text: 'Templates',
-          items: [{ text: 'Templates', link: '/api/templates' }],
-        },
-        {
-          text: 'Analytics',
-          items: [
-            { text: 'Request History', link: '/api/analytics-requests' },
-            { text: 'Usage & Cost', link: '/api/analytics-usage' },
-            { text: 'Performance Metrics', link: '/api/analytics-metrics' },
-          ],
+          text: 'Endpoints',
+          items: specTags(readSpec()).map(({ name, slug }) => ({ text: name, link: `/api/${slug}` })),
         },
       ],
     },

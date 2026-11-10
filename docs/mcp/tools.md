@@ -44,7 +44,7 @@ Lists the available models and each model's `input` schema — the fields `gener
 | `sort_by` | string | `created_at` (default) or `name`. |
 | `sort_direction` | string | `asc` or `desc` (default `desc`). |
 
-Returns a paginated list of models. REST equivalent: [`GET /models`](/api/models).
+Returns a paginated list of models. REST equivalent: [`GET /models`](/api/catalog).
 
 ## `generate-image`
 
@@ -58,7 +58,7 @@ Starts a generation from a template or a model. Asynchronous: returns a task id 
 | `variables` | object | Values for the template's prompt variables, as key → value. |
 | `provider_id` | integer | Force a specific provider; omit to auto-select. |
 
-Returns the created task. REST equivalent: [`POST /process`](/api/process).
+Returns the created task. REST equivalent: [`POST /process`](/api/processing).
 
 ## `get-task`
 
@@ -68,7 +68,7 @@ Status and result of one generation. While running, status is `created` or `proc
 |---|---|---|
 | `task_id` | string · **required** | Task id from `generate-image`. |
 
-Returns the task with its status and, when finished, output images. REST equivalent: [`GET /tasks/{task}`](/api/tasks).
+Returns the task with its status and, when finished, output images. REST equivalent: [`GET /tasks/{task}`](/api/processing).
 
 ## `list-tasks`
 

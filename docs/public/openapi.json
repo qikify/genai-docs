@@ -85,7 +85,7 @@
     "/images": {
       "post": {
         "summary": "Host an image for use in later generations",
-        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\nThe decoded upload limit is 10 MB for every transport.\n\nFor a large image, or from a network whose route to this API is slow,\nthe two-call upload starting at `POST /images/upload-url` sends the\nbytes straight to storage instead and returns the same reference.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/sync/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved, whether the path is used in\n`default_inputs` or as the template's `thumbnail_path`.\n\nUploaded images are re-encoded to JPEG, PNG or WebP, resized so the\nlongest edge is at most 4096 pixels, and stripped of metadata. The\nstored bytes will therefore differ from what was sent, and `size_bytes`\nreports what was stored. Send `path`, never `url`, as the generation\nreference.\n",
+        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\nThe decoded upload limit is 10 MB for every transport.\n\nFor a large image, or from a network whose route to this API is slow,\nthe two-call upload starting at `POST /images/upload-url` sends the\nbytes straight to storage instead and returns the same reference.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/sync/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved, whether the path is used in\n`default_inputs` or as the template's `thumbnail_path`.\n\nUploaded images are re-encoded to JPEG, or to PNG when they carry\ntransparency, at their own size, and stripped of metadata. Each model\nsets the size its input images are sent at. The stored bytes will\ntherefore differ from what was sent, and `size_bytes` reports what was\nstored. Send `path`, never `url`, as the generation reference.\n",
         "operationId": "uploadImage",
         "tags": [
           "Images"
@@ -2237,6 +2237,16 @@
                         "default_inputs"
                       ]
                     },
+                    "differs_inputs": {
+                      "type": "array",
+                      "description": "The `default_inputs` keys on which the version differs from the\ntemplate now, in the template's key order, then the keys only the\nversion has. Image inputs are compared by content, as in\n`differs_from_current`. Empty when no input differs.\n",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "prompt"
+                      ]
+                    },
                     "revertible": {
                       "type": "boolean",
                       "description": "Whether reverting would change anything: false exactly when\n`differs_from_current` is empty, and a revert is then refused.\n"
@@ -3782,6 +3792,33 @@
               }
             }
           },
+          "example": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The example run that fills the model's playground, with the input that produced its output. Image inputs are links.",
+            "properties": {
+              "input": {
+                "type": "object",
+                "example": {
+                  "prompt": "a watercolor fox",
+                  "image_urls": [
+                    "https://cdn.example.com/examples/models/1/source.png"
+                  ]
+                }
+              },
+              "output_images": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "https://cdn.example.com/examples/models/1/result.png"
+                ]
+              }
+            }
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -4459,6 +4496,10 @@
               "$ref": "#/components/schemas/PromptVariable"
             }
           },
+          "model_id": {
+            "type": "integer",
+            "description": "The model the template runs, sent whether or not `model` is"
+          },
           "model": {
             "$ref": "#/components/schemas/AiModel"
           },
@@ -4624,13 +4665,6 @@
                   },
                   "thumbnail_custom": {
                     "type": "boolean"
-                  },
-                  "image_previews": {
-                    "type": [
-                      "object",
-                      "null"
-                    ],
-                    "description": "URLs that render the version's image inputs, by input name"
                   }
                 }
               },

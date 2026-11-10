@@ -3,6 +3,7 @@ import { theme, useOpenapi } from 'vitepress-openapi/client'
 import spec from '../../public/openapi.json'
 import 'vitepress-openapi/dist/style.css'
 import './custom.css'
+import ApiEndpoints from './ApiEndpoints.vue'
 
 export default {
   extends: DefaultTheme,
@@ -16,5 +17,6 @@ export default {
       },
     })
     theme.enhanceApp({ ...ctx, openapi })
+    ctx.app.component('ApiEndpoints', ApiEndpoints)
   },
 }

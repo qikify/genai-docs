@@ -72,26 +72,6 @@ X-Credits-Remaining: 849.50
 
 ## Endpoints
 
-### Utility
-- [`GET /ping`](/api/ping) — Test API key and check balance
+Every endpoint in the API, by group. Each group has its own page.
 
-### Catalog
-- [`GET /models`](/api/models) — List all models
-- [`GET /models/{id}`](/api/models) — Get model details
-- [`GET /providers`](/api/providers) — List providers
-- [`GET /model-providers`](/api/providers) — List model-provider combinations
-
-### Processing
-- [`POST /process`](/api/process) — Submit image generation request
-- [`GET /tasks/{id}`](/api/tasks) — Get task status
-- [`GET /tasks/{id}/stream`](/api/tasks) — Stream task status (SSE)
-
-### Templates
-- [`GET /templates`](/api/templates) — List templates
-- [`GET /templates/{id}`](/api/templates) — Get template details
-
-### Analytics
-- [`GET /analytics/requests`](/api/analytics-requests) — Request history
-- [`GET /analytics/requests/filters`](/api/analytics-requests) — Filter options
-- [`GET /analytics/usage`](/api/analytics-usage) — Usage & cost aggregation
-- [`GET /analytics/metrics`](/api/analytics-metrics) — Performance metrics
+<ApiEndpoints />
