@@ -39,6 +39,30 @@ A single MCP endpoint over Streamable HTTP. Authentication uses your ImagenHub A
 
 Each successful generation charges credits to the account, just like the REST API.
 
+## Limits
+
+Each organization has two limits on the MCP server, on every plan:
+
+| Window | Messages |
+|---|---|
+| A minute | 300 |
+| A day, 24 hours from the first message of the window | 5,000 |
+
+Every message counts one: the handshake, listing the tools, and each tool call. Past either limit, the call is refused with `429` and says which limit and how long to wait, which the `Retry-After` header also gives in seconds:
+
+```json
+{
+  "error": {
+    "type": "rate_limit_exceeded",
+    "message": "Too many requests: 5000 a day. Try again in 3600 seconds."
+  }
+}
+```
+
+Every reply carries `X-RateLimit-Limit` and `X-RateLimit-Remaining` for whichever of the two has less left.
+
+To hear about each generation as it finishes, subscribe to `task.succeeded` and `task.failed` on [event webhooks](/guide/webhooks#event-webhooks) rather than calling `list-tasks` on a timer. If your agents need more than 5,000 messages a day, contact support.
+
 ## Next
 
 - [Connecting a Client](/mcp/connecting) — point Claude or another MCP client at the server.
