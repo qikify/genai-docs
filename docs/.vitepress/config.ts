@@ -80,6 +80,7 @@ export default defineConfig({
             { text: 'Dynamic Upload Ratio', link: '/guide/dynamic-upload-ratio' },
             { text: 'Fallback Template', link: '/guide/fallback-template' },
             { text: 'Template Lock', link: '/guide/template-lock' },
+            { text: 'Reference Image Mapping', link: '/guide/reference-image-mapping' },
             { text: 'Batch Editor', link: '/guide/batch-editor' },
           ],
         },
