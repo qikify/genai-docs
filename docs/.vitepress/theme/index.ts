@@ -14,6 +14,12 @@ export default {
         operation: {
           hiddenSlots: ['playground'],
         },
+        // The spec's descriptions are wrapped at about 80 columns, and the plugin
+        // renders each newline as a line break, cutting sentences mid-line.
+        // Markdown's own rule joins the lines of a paragraph.
+        markdown: {
+          config: (md) => md.set({ breaks: false }),
+        },
       },
     })
     theme.enhanceApp({ ...ctx, openapi })
