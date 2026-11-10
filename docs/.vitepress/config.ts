@@ -9,14 +9,14 @@ export default defineConfig({
   description: 'Generative media API — one endpoint, every image model.',
   cleanUrls: true,
 
-  // The host (DigitalOcean App Platform) serves /foo from foo/index.html but never tries
-  // foo.html, so every page is also written in the folder layout VitePress prescribes for
-  // such hosts: https://vitepress.dev/guide/routing#generating-clean-urls
   // An API tag page has no heading of its own to take a title from: see [tag].paths.ts.
   transformPageData(pageData) {
     if (pageData.params?.name) pageData.title = pageData.params.name
   },
 
+  // The host (DigitalOcean App Platform) serves /foo from foo/index.html but never tries
+  // foo.html, so every page is also written in the folder layout VitePress prescribes for
+  // such hosts: https://vitepress.dev/guide/routing#generating-clean-urls
   async buildEnd({ outDir }) {
     for (const file of await readdir(outDir, { recursive: true })) {
       if (!file.endsWith('.html') || basename(file) === 'index.html' || file === '404.html') continue
