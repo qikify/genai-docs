@@ -43,7 +43,7 @@ When a buyer picks an option and uploads a photo, ImagenHub does this:
 
 The model always receives the images in the same order: **the buyer's photo first, the mapped image second.** Because of this fixed order you can write the prompt as "Image 1 is the customer's photo, Image 2 is the selected costume".
 
-The text variable keeps working as before. `{{costume}}` in the prompt is still replaced with the selected value, so the prompt can also name the option.
+The text variable keeps working as before. <code v-pre>{{costume}}</code> in the prompt is still replaced with the selected value, so the prompt can also name the option.
 
 ## Before you start
 
@@ -51,7 +51,7 @@ You need three things:
 
 1. **The feature enabled for your organization.** See the warning at the top of this page.
 2. **A model that has a Reference Images field.** Some models only have an **Images** field. For example, Nano Banana 2.1 Edit has only **Images**, so there is nothing to map. In our example we use **GPT Image 2.6 Flare Edit**, which has both **Images** (the buyer's photo) and **Reference Images**.
-3. **A variable for the option in your prompt**, written as `{{name}}`, for example `{{costume}}`. The name must be the same name your storefront uses for that option, and the values your storefront sends are what ImagenHub matches against your mapping.
+3. **A variable for the option in your prompt**, written as <code v-pre>{{name}}</code>, for example <code v-pre>{{costume}}</code>. The name must be the same name your storefront uses for that option, and the values your storefront sends are what ImagenHub matches against your mapping.
 
 ## Set it up
 
@@ -200,7 +200,7 @@ Other checks stop the save as well: a row without an image, more than 250 rows, 
 
 ## Good to know
 
-- **Check the credit estimate after you save.** In our test template (6 costume images, GPT Image 2.6 Flare Edit) the estimate on the **Run** button showed about 15 credits before the mapping was saved and about 6 credits after. The exact price depends on the model. On models that charge by the number or size of input images, sending one reference image instead of all of them lowers the cost.
+- **It can lower the cost.** On models that charge by the number or size of input images, sending one reference image instead of all of them lowers the cost. The exact price depends on the model.
 - **One variable per template.** If you have two options that each need their own image, for example costume and background, mapping is not available for both in the same template.
 - **Keep values stable.** Renaming an option on your storefront without changing the Value in the mapping makes those runs fail with **No reference image mapped**.
 
