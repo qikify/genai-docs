@@ -7,12 +7,10 @@ const tags = specTags(spec)
 
 <template>
   <div v-for="tag in tags" :key="tag.slug">
-    <h3 :id="tag.slug">
-      <a :href="`/api/${tag.slug}`">{{ tag.name }}</a>
-    </h3>
+    <h3 :id="tag.slug">{{ tag.name }}</h3>
     <ul>
-      <li v-for="operation in tag.operations" :key="`${operation.method} ${operation.path}`">
-        <a :href="`/api/${tag.slug}`"><code>{{ operation.method }} {{ operation.path }}</code></a>
+      <li v-for="operation in tag.operations" :key="operation.operationId">
+        <a :href="`/api/${operation.operationId}`"><code>{{ operation.method }} {{ operation.path }}</code></a>
         <template v-if="operation.summary"> — {{ operation.summary }}</template>
       </li>
     </ul>

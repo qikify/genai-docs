@@ -21,7 +21,7 @@ Lists the templates available to the account — its own plus public presets —
 | `per_page` | integer | Results per page (1–100, default 15). |
 | `page` | integer | Page number. |
 
-Returns a paginated list of templates. REST equivalent: [`GET /templates`](/api/templates).
+Returns a paginated list of templates. REST equivalent: [`GET /templates`](/api/listTemplates).
 
 ## `get-template`
 
@@ -31,7 +31,7 @@ Full detail for one template, including the exact inputs it accepts: `default_in
 |---|---|---|
 | `template_id` | string · **required** | Template UUID (from `list-templates`). |
 
-Returns the full template. REST equivalent: [`GET /templates/{template}`](/api/templates).
+Returns the full template. REST equivalent: [`GET /templates/{template}`](/api/getTemplate).
 
 ## `list-models`
 
@@ -44,7 +44,7 @@ Lists the available models and each model's `input` schema — the fields `gener
 | `sort_by` | string | `created_at` (default) or `name`. |
 | `sort_direction` | string | `asc` or `desc` (default `desc`). |
 
-Returns a paginated list of models. REST equivalent: [`GET /models`](/api/catalog).
+Returns a paginated list of models. REST equivalent: [`GET /models`](/api/listModels).
 
 ## `generate-image`
 
@@ -58,7 +58,7 @@ Starts a generation from a template or a model. Asynchronous: returns a task id 
 | `variables` | object | Values for the template's prompt variables, as key → value. |
 | `provider_id` | integer | Force a specific provider; omit to auto-select. |
 
-Returns the created task. REST equivalent: [`POST /process`](/api/processing).
+Returns the created task. REST equivalent: [`POST /process`](/api/process).
 
 ## `get-task`
 
@@ -68,7 +68,7 @@ Status and result of one generation. While running, status is `created` or `proc
 |---|---|---|
 | `task_id` | string · **required** | Task id from `generate-image`. |
 
-Returns the task with its status and, when finished, output images. REST equivalent: [`GET /tasks/{task}`](/api/processing).
+Returns the task with its status and, when finished, output images. REST equivalent: [`GET /tasks/{task}`](/api/getTask).
 
 ## `list-tasks`
 

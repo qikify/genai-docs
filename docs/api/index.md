@@ -72,6 +72,6 @@ X-Credits-Remaining: 849.50
 
 ## Endpoints
 
-Every endpoint in the API, by group. Each group has its own page.
+Every endpoint in the API, by group. Each endpoint has its own page.
 
 <ApiEndpoints />

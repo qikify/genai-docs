@@ -96,7 +96,7 @@ To decide which templates to lock, list your own with `GET /templates?ownership=
 
 To lock every template that has not changed for a while, without clicking **Lock** on each one, run a scheduled job built on these calls. See [Auto-lock](#auto-lock) below.
 
-The full reference is on the [Templates](/api/templates) page of the API reference.
+The full reference is on the [Templates](/api/#templates) section of the API reference.
 
 ## Version history on a locked template
 
@@ -369,4 +369,4 @@ A run costs one list request per 100 templates, plus one request for each templa
 - [Organization](./organization.md): roles and what each of them can do.
 - [Authentication](./authentication.md): where API keys come from and how to send them.
 - [Rate Limits & Credits](./rate-limits.md): the per-minute limit and how credits are counted.
-- [Templates API reference](/api/templates): the list, lock and unlock endpoints.
+- [Templates API reference](/api/#templates): the list, lock and unlock endpoints.

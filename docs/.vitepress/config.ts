@@ -1,17 +1,21 @@
 import { copyFile, mkdir, readdir } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { defineConfig } from 'vitepress'
+import { useSidebar } from 'vitepress-openapi'
 import { readSpec } from './read-spec'
-import { specTags } from './spec-tags'
+import { specOperations } from './spec-tags'
+
+const spec = readSpec()
+const operations = new Map(specOperations(spec).map((operation) => [operation.operationId, operation]))
 
 export default defineConfig({
   title: 'ImagenHub',
   description: 'Generative media API — one endpoint, every image model.',
   cleanUrls: true,
 
-  // An API tag page has no heading of its own to take a title from: see [tag].paths.ts.
+  // An endpoint page has no heading of its own to take a title from: see [operationId].paths.ts.
   transformPageData(pageData) {
-    if (pageData.params?.name) pageData.title = pageData.params.name
+    if (pageData.params?.summary) pageData.title = pageData.params.summary
   },
 
   // The host (DigitalOcean App Platform) serves /foo from foo/index.html but never tries
@@ -43,6 +47,25 @@ export default defineConfig({
 
     search: {
       provider: 'local',
+      options: {
+        miniSearch: {
+          // Search reads each page from its file and finds no words in an endpoint page,
+          // whose file [operationId].paths.ts makes up. So an endpoint page gives it its
+          // summary, method, path and description here; any other page returns nothing
+          // and keeps the default split.
+          _splitIntoSections(file: string) {
+            const operation = operations.get(file.match(/\/api\/([^/]+)\.md$/)?.[1] ?? '')
+            if (!operation) return undefined
+            return [
+              {
+                anchor: '',
+                titles: [...operation.tags.slice(0, 1), operation.summary],
+                text: `${operation.method} ${operation.path} ${operation.description}`,
+              },
+            ]
+          },
+        },
+      },
     },
 
     nav: [
@@ -136,10 +159,7 @@ export default defineConfig({
             { text: 'Errors', link: '/errors/' },
           ],
         },
-        {
-          text: 'Endpoints',
-          items: specTags(readSpec()).map(({ name, slug }) => ({ text: name, link: `/api/${slug}` })),
-        },
+        ...useSidebar({ spec, linkPrefix: '/api/' }).generateSidebarGroups(),
       ],
     },
 
