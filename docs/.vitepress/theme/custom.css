@@ -170,15 +170,16 @@
   padding: 0;
 }
 
-.OASidebarItem > :not([hidden]) ~ :not([hidden]) {
-  margin-left: 0;
-}
-
 .OASidebarItem-badge {
   flex: none;
   width: 3.25rem;
-  margin-top: 2px;
   text-align: center;
+}
+
+/* As specific as the plugin's own space-x margin on the badge, which it
+   replaces with the gap above. */
+.OASidebarItem > .OASidebarItem-badge:not(:last-child) {
+  margin: 2px 0 0;
 }
 
 /* ---- Hero ---- */

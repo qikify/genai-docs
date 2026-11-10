@@ -13,6 +13,12 @@ export default defineConfig({
   description: 'Generative media API — one endpoint, every image model.',
   cleanUrls: true,
 
+  // vitepress-openapi 0.2 imports vitepress's client API (useData) from its own
+  // client bundle, which Node can only resolve when the pre-render bundles it in.
+  vite: {
+    ssr: { noExternal: ['vitepress-openapi'] },
+  },
+
   // An endpoint page has no heading of its own to take a title from: see [operationId].paths.ts.
   transformPageData(pageData) {
     if (pageData.params?.summary) pageData.title = pageData.params.summary
