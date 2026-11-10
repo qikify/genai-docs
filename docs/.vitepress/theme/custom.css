@@ -159,6 +159,28 @@
   background-color: var(--vp-c-brand-1);
 }
 
+/* An endpoint's row, from vitepress-openapi's sidebar. The plugin centres the
+   method badge against the name and pushes the row right, so a name that wraps
+   leaves the badge floating mid-row and the badges out of line. Here the badges
+   form one column, level with the name's first line, with a gap before it. */
+.OASidebarItem {
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0;
+}
+
+.OASidebarItem > :not([hidden]) ~ :not([hidden]) {
+  margin-left: 0;
+}
+
+.OASidebarItem-badge {
+  flex: none;
+  width: 3.25rem;
+  margin-top: 2px;
+  text-align: center;
+}
+
 /* ---- Hero ---- */
 .VPHero .name {
   font-size: clamp(2.5rem, 6vw, 4rem);
