@@ -380,3 +380,11 @@ button.VPNavBarSearchButton .keys {
 .openapi-operation code {
   font-family: var(--vp-font-family-mono);
 }
+
+/* VitePress puts the heading's # link 24px down, to clear the padding its h2
+   has; the Samples h2 in the operation's right column has none, so the link
+   sat below its heading. vitepress-openapi zeroes it on its other headings. */
+.OAPathContentEnd .vp-doc h2 .header-anchor,
+.OAPathContentEnd h2 .header-anchor {
+  top: 0;
+}
