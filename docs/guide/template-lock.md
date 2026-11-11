@@ -94,7 +94,7 @@ An API key may lock and unlock any of your organization's own templates. The Own
 
 To decide which templates to lock, list your own with `GET /templates?ownership=private&per_page=100`. Each one carries `locked_at` and `updated_at`. Locking and unlocking both move `updated_at`, so a template unlocked for an edit counts as just changed.
 
-To lock every template that has not changed for a while, without clicking **Lock** on each one, run a scheduled job built on these calls. See [Auto-lock](#auto-lock) below.
+To lock templates automatically, without clicking **Lock** on each one, turn on [Auto-lock](#auto-lock). To choose your own waiting period, see [Auto-lock with a script](#auto-lock-with-a-script).
 
 The full reference is on the [Templates](/api/#templates) section of the API reference.
 
@@ -118,7 +118,59 @@ If an editor needs to change a locked template, ask an owner or an admin to unlo
 
 Locking by hand freezes a finished template, but someone has to click **Lock** on each one. If your organization has hundreds of templates that already run reliably behind a storefront or a sale season, locking them one by one does not scale, and a template that nobody remembers to lock is one stray edit away from changing every image it produces.
 
-**Auto-lock** closes that gap. A small scheduled job on your side locks every template that has not changed for a waiting period you choose (48 hours, 3 days, 10 days). There is nothing to switch on in the web app: the job uses the two lock calls of the API and your organization's API key.
+**Auto-lock** closes that gap. When it is on, a template that has gone 48 hours without being created or edited is locked automatically. You do not run anything yourself: you switch it on once for your organization.
+
+::: warning Auto-lock is not switched on for every organization
+ImagenHub switches it on for an organization on request. If your **Organization** page has no **Auto lock templates** card, auto-lock is not available for your organization yet. Contact support to ask for it, and read this section before you turn it on.
+:::
+
+### At a glance
+
+| | |
+| --- | --- |
+| Who can turn it on or off | An **Owner** or an **Admin** of the organization. Only they see the card |
+| Where | **Organization**, then **General**, in the **Auto lock templates** card |
+| Default | Off |
+| Waiting period | 48 hours without a create or an edit |
+| Turning it off | Stops new locks. Templates that are already locked stay locked |
+
+### Turn it on
+
+1. Open **Organization** in the sidebar, then **General**.
+2. Find the **Auto lock templates** card. The switch starts **Off**.
+
+![The Organization page, General tab. The Auto lock templates card shows the switch set to Off.](./assets/alk-01-auto-lock-off.png)
+
+3. Switch it to **On**. A message confirms it: "Auto lock is on."
+
+![The Auto lock templates card with the switch set to On.](./assets/alk-02-auto-lock-on.png)
+
+From now on, a template is locked once nobody has created or edited it for 48 hours. Templates that are already past 48 hours when you switch it on are locked at that moment.
+
+### Turn it off
+
+1. Switch the **Auto lock templates** card to **Off**.
+2. Confirm in the **Turn off auto lock** dialog: "Templates stop being locked automatically. The ones already locked stay locked until an owner or admin unlocks them."
+
+![The Turn off auto lock dialog, with the Turn off button highlighted.](./assets/alk-03-turn-off-confirm.png)
+
+A message confirms it: "Auto lock is off." Nothing is unlocked. To change a template that was already locked, an Owner or an Admin unlocks it, see [Unlocking a template](#unlocking-a-template).
+
+### What an auto-locked template allows
+
+An auto-locked template is a normal locked template. Nobody can edit, delete or revert it, not even owners and admins, but it still runs and can be duplicated. See [How it works](#how-it-works).
+
+### If a template is not locked
+
+| What you see | Likely cause |
+| --- | --- |
+| There is no **Auto lock templates** card | Auto-lock is not switched on for your organization yet, or you are not an Owner or an Admin. Ask an owner or contact support |
+| A template is still unlocked | It was created or edited within the last 48 hours. The 48 hours count from the last create or edit |
+| You turned auto-lock off, but templates are still locked | This is expected. Turning it off does not unlock anything. An owner or an admin unlocks them one by one |
+
+## Auto-lock with a script
+
+The **Auto lock templates** setting above uses a fixed waiting period of 48 hours. If you want a different waiting period, or your own rules about which templates to lock, you can run a small scheduled job on your side instead. It uses the two lock calls of the API and your organization's API key, and it locks every template that has not changed for a waiting period you choose (48 hours, 3 days, 10 days).
 
 ### When to use auto-lock
 
