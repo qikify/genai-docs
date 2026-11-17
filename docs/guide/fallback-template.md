@@ -45,7 +45,7 @@ When a provider genuinely fails (server error, timeout, rate limit), ImagenHub t
 
 ### What comes from where
 
-Once a run switches, the second attempt uses almost everything from the fallback template. Images (the customer's input photo, reference images) follow a different rule: whichever field the original request already set a concrete value for is kept as-is, and only a field the request left unset falls back to the fallback template's own default. Post-processing always follows the primary template.
+Once a run switches, the second attempt uses almost everything from the fallback template. Images (the customer's input photo, reference images) follow a different rule: whichever field the original request already set a concrete value for is kept as-is, and only a field the request left unset falls back to the fallback template's own default. Post-processing follows the fallback template: the run applies the fallback's own steps, or none if the fallback has none.
 
 | Part of the run | Taken from |
 | --- | --- |
@@ -54,7 +54,7 @@ Once a run switches, the second attempt uses almost everything from the fallback
 | Model settings (size or aspect ratio, quality, and so on) | Fallback template |
 | Reference images | Follows the original request if it sent that field, otherwise the fallback template's own default (see the note below) |
 | Input images sent with the request (for example a customer's upload) | Kept from the request as-is. Images already set in the fallback template are not used |
-| Post-processing | The primary template. The fallback template's own post-processing does not run |
+| Post-processing | Fallback template. The primary template's post-processing does not run, and a fallback with no post-processing runs none |
 
 ::: tip Reference images: decided per field, not "always taken from the fallback"
 Whichever field the original request already sent a concrete value for — even one that happens to match the primary template's own default — is kept unchanged when the run switches to the fallback. Only a field the request never sent at all falls back to the fallback template's own default, not the primary's. Testing with three distinct `ref_urls` values sent explicitly in the request (equal to the primary's default, an arbitrary image, and equal to the fallback's own default) all showed the explicit value carried through; calling with a completely empty request (no fields set at all) showed every field, including the prompt and the input image, fall back to the fallback template's own defaults.
@@ -66,15 +66,19 @@ Whichever field the original request already sent a concrete value for — even 
 Different models describe image dimensions in their own way. One model uses `size: 1024x1536`, another uses `aspect_ratio: 2:3` plus `image_size: 2K`. ImagenHub does not convert one into the other, and it will not warn you if the two templates produce different shapes. Setting up both templates so their results are comparable is up to you.
 :::
 
+::: tip Give each template the post-processing its own model needs
+Two models can differ in what they hand back. One may return a transparent background by itself while another always returns a solid one, so the fallback may need a background-removal step the primary does not, or the other way round.
+:::
+
 ### What you pay
 
 - The price you see before a run is the primary template's price. For example the **Run** button may read "~15 credits" even though the fallback only costs 4.
 - You are only charged for the step that produced the image, at that step's price. If the fallback produced it, you pay the fallback template's price, which can be higher or lower than the primary's.
 - A step that fails is never charged: it shows **0 Credits** in the Processing chain.
 - If both steps fail, you pay nothing.
-- The primary template's post-processing is still charged as normal, added on top of the price of whichever step produced the image.
+- Post-processing is charged as normal, added on top of the price of whichever step produced the image. When the run switched, that is the fallback template's post-processing.
 
-![The primary template (Nano Banana Pro, ~15 credits) has a remove-background step. The run switched to the fallback (Nano Banana): 6 credits total, 4 for the generation step plus 2 for post-processing.](./assets/ft-task-details-cost.png)
+![A run on a Nano Banana Pro template (~15 credits) that switched to its fallback (Nano Banana): 6 credits total, 4 for the generation step plus 2 for a remove-background step.](./assets/ft-task-details-cost.png)
 
 ::: tip See the real credit cost on the task page
 The **EST. COST** column in Task history is only an estimate. The actual credits charged are on the **Cost** line in the task page's Details section.
@@ -86,7 +90,7 @@ The **EST. COST** column in Task history is only an estimate. The actual credits
 
    ![Switching from Nano Banana Pro to Nano Banana: prompt, image_urls, ref_urls and aspect_ratio are kept; image_size is dropped.](./assets/ft-change-model-kept-dropped.png)
 
-   Rewrite the prompt and adjust the settings for the new model, click **Update**, give it a clear name, then run it a few times to make sure it produces something close enough to the original.
+   Rewrite the prompt and adjust the settings and post-processing for the new model, click **Update**, give it a clear name, then run it a few times to make sure it produces something close enough to the original.
 
 2. **Open the primary template.** In the right-hand column there is a **Fallback template** card. While nothing is bound it reads "None. When this template's model fails on every provider, the run fails." Click **Choose**.
 
@@ -115,7 +119,7 @@ On the task page, a yellow notice reading **Switched to the fallback template** 
 - **Input**: the fallback template's prompt and settings, together with the request's original input image.
 - **Logs**: a line reporting that the primary failed and the run is switching to the fallback model.
 
-![The primary template (Nano Banana Pro) was blocked by the safety filter, the run switched to the fallback (Nano Banana) and produced an image. 6 credits total: 4 for the fallback's generation step plus 2 for post-processing (run according to the primary template's configuration).](./assets/ft-task-page-success.png)
+![The primary template (Nano Banana Pro) was blocked by the safety filter, the run switched to the fallback (Nano Banana) and produced an image. 6 credits total: 4 for the fallback's generation step plus 2 for post-processing.](./assets/ft-task-page-success.png)
 
 If the fallback also fails, the task is marked **Error**. The red notice at the top is the fallback's error. The primary's failure reason is still shown in the yellow notice and on the Started on line, so you can see why each attempt failed.
 
