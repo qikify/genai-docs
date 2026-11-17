@@ -119,6 +119,7 @@ export default defineConfig({
             { text: 'Template Lock', link: '/guide/template-lock' },
             { text: 'Reference Image Mapping', link: '/guide/reference-image-mapping' },
             { text: 'Batch Editor', link: '/guide/batch-editor' },
+            { text: 'Variable Runner', link: '/guide/variable-runner' },
           ],
         },
       ],
