@@ -33,6 +33,11 @@
   padding-top: 0;
 }
 
+/* VitePress offsets the h2 anchor by its default 24px padding-top, removed above. */
+.vp-doc h2 .header-anchor {
+  top: 0;
+}
+
 /* Body copy sits a step lighter than headings, as on fal, Resend and Stripe. */
 .vp-doc {
   color: var(--ih-c-text-body);
