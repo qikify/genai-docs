@@ -31,6 +31,7 @@ Anything else in the object is specific to the type and is documented on its pag
 | Type | Status | When |
 |------|--------|------|
 | [`insufficient-credits`](/errors/insufficient-credits) | `403` | The account cannot cover the credit cost of a run |
+| [`key-limit-reached`](/errors/key-limit-reached) | `403` | The API key has spent its credit limit for the period |
 | [`daily-limit-reached`](/errors/daily-limit-reached) | `429` | The organization has made every request its plan allows today |
 
 ## Other errors

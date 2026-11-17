@@ -62,5 +62,5 @@ After authentication, the callback at `/auth/{provider}/callback` issues a JWT t
 | Status | Meaning |
 |--------|---------|
 | `401`  | Missing or invalid authentication credentials |
-| `403`  | [Insufficient credits](/errors/insufficient-credits) — top up or raise the overage limit |
+| `403`  | [Insufficient credits](/errors/insufficient-credits) — top up or raise the overage limit; or [key limit reached](/errors/key-limit-reached) — the key has spent its [credit limit](/guide/api-key-limits) for the period |
 | `429`  | Rate limited (free tier): check `Retry-After`, or see the [daily limit](/errors/daily-limit-reached) on `POST /process` |

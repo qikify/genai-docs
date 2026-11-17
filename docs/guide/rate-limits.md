@@ -36,12 +36,7 @@ Every response includes rate limit information:
 
 ## Paid tier (credits)
 
-Paid accounts have no rate limits. Instead, each request deducts credits based on the model-provider cost:
-
-| Header | Description |
-|--------|-------------|
-| `X-Credits-Used` | Total credits used by this API key |
-| `X-Credits-Remaining` | Remaining credits (or `"unlimited"`) |
+Paid accounts have no rate limits. Instead, each request deducts credits based on the model-provider cost. A key can also have a credit limit of its own; see [API Key Limits](/guide/api-key-limits).
 
 When the balance cannot cover a run, the request is refused with `403` and an [`insufficient-credits`](/errors/insufficient-credits) problem:
 

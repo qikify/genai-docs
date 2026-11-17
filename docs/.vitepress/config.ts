@@ -108,6 +108,7 @@ export default defineConfig({
             { text: 'Analytics', link: '/guide/analytics' },
             { text: 'Bring Your Own Keys', link: '/guide/byok' },
             { text: 'Rate Limits & Credits', link: '/guide/rate-limits' },
+            { text: 'API Key Limits', link: '/guide/api-key-limits' },
           ],
         },
         {
@@ -152,6 +153,7 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/errors/' },
             { text: 'Insufficient credits', link: '/errors/insufficient-credits' },
+            { text: 'Key limit reached', link: '/errors/key-limit-reached' },
             { text: 'Daily limit reached', link: '/errors/daily-limit-reached' },
           ],
         },

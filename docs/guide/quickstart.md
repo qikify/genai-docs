@@ -24,10 +24,9 @@ curl https://api.imagenhub.ai/api/ping \
   "message": "pong",
   "key": {
     "name": "My API Key",
-    "type": "live",
-    "credit_limit": 1000.00,
+    "credit_limit": 1000,
     "credits_used": 0,
-    "credits_remaining": 1000.00
+    "credits_remaining": 1000
   },
   "user": { "tier": "paid" }
 }
