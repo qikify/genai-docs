@@ -84,7 +84,7 @@
     },
     "/images": {
       "post": {
-        "summary": "Host an image for use in later generations",
+        "summary": "Host an image",
         "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\nThe decoded upload limit is 10 MB for every transport.\n\nFor a large image, or from a network whose route to this API is slow,\nthe two-call upload starting at `POST /images/upload-url` sends the\nbytes straight to storage instead and returns the same reference.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/sync/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved, whether the path is used in\n`default_inputs` or as the template's `thumbnail_path`.\n\nUploaded images are re-encoded to JPEG, or to PNG when they carry\ntransparency, at their own size, and stripped of metadata. Each model\nsets the size its input images are sent at. The stored bytes will\ntherefore differ from what was sent, and `size_bytes` reports what was\nstored. Send `path`, never `url`, as the generation reference.\n",
         "operationId": "uploadImage",
         "tags": [
@@ -163,7 +163,7 @@
     },
     "/images/upload-url": {
       "post": {
-        "summary": "Mint a URL to upload an image straight to storage",
+        "summary": "Get an upload URL",
         "description": "The first half of a two-call upload that sends the bytes to storage\ndirectly rather than through this API. The bytes go raw rather than\nbase64, and they take the caller's own route to the storage bucket\ninstead of the route to this API, which from some networks is many\ntimes faster.\n\nThe response names an `upload_url`, the `headers` the PUT must carry\nunchanged, and the `path` the bytes will occupy. PUT the raw image\nbytes to `upload_url` with those headers. When the PUT answers 2xx,\nsend `path` to `POST /images/confirm`, which validates the image and\nreturns the same reference `POST /images` returns.\n\nNothing exists until confirmation. Minting creates no row; a URL\nnobody writes to, and bytes nobody confirms, are swept with the rest\nof the expiring prefix. The URL writes to one key and\nnothing else, until `expires_at`, so a leaked URL can put bytes in one\nplace that nothing reads until this account confirms them.\n\nThis route has its own rate limit, separate from `POST /images` and\nfrom `POST /images/confirm`, so one mint and one confirm never exhaust\neither.\n",
         "operationId": "createImageUploadUrl",
         "tags": [
@@ -207,7 +207,7 @@
     },
     "/images/confirm": {
       "post": {
-        "summary": "Turn bytes written to a minted URL into a hosted image",
+        "summary": "Confirm an upload",
         "description": "The second half of a two-call upload. Send the `path` that\n`POST /images/upload-url` returned, once the PUT to its `upload_url`\nhas answered 2xx.\n\nThe bytes are read from storage and treated exactly as bytes sent to\n`POST /images`: validated by inspecting them, re-encoded, and given a\nnew `path` under the same rules. The answer has the same shape as\n`POST /images`, and the `path` in it is the reference to keep. The\nstaged path is consumed and cannot be confirmed twice.\n\nWhatever was at the staged path is removed whether or not it was\naccepted, so a refused upload has to be minted and sent again.\n",
         "operationId": "confirmImageUpload",
         "tags": [
@@ -389,7 +389,7 @@
     },
     "/models/{owner}/{name}": {
       "get": {
-        "summary": "Get a specific AI model by owner + name",
+        "summary": "Get a model",
         "description": "Canonical lookup using the (owner, name) pair. Same response shape as\n`/models/{aiModel}`. Model names may contain a `/edit` variant suffix,\nwhich is captured as part of `{name}` (e.g. `/models/openai/gpt-image-1/edit`).\nHidden models are excluded by default. Set `include_hidden=1` with a JWT\nsession or API key to include them, regardless of member role. Organization\nallowlists still apply and deleted models are never returned.\n",
         "operationId": "getModelByOwnerAndName",
         "tags": [
@@ -455,7 +455,7 @@
     },
     "/model-providers": {
       "get": {
-        "summary": "List model-provider combinations",
+        "summary": "List model providers",
         "description": "Returns visible model-provider combinations. Use query parameters\nto filter by provider or model.\n",
         "operationId": "listModelProviders",
         "tags": [
