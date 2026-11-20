@@ -6,7 +6,7 @@ Each API key can have its own credit limit, so one key, such as one shop or one 
 
 When you create a key in the ImagenHub app under **API Keys**, choose its **Credit limit**: 100, 500 or 1,000 credits, a custom amount, or **No limit**. A custom limit is a whole number of credits from 1 to 1,000,000,000.
 
-Then choose how often the limit resets with **Reset limit every**:
+Then choose how often the limit resets with **Reset limit every**. The reset is chosen once, when the key is created, and can't be changed later:
 
 | Reset | The count starts again from zero |
 |-------|----------------------------------|
@@ -19,10 +19,9 @@ Resets follow the calendar in UTC, not the time the key was made: a daily key ma
 
 ## Editing a limit
 
-Press **Edit** next to a key to change its name, credit limit or reset at any time; its expiration stays as it was issued.
+Press **Edit** next to a key to change its name or credit limit at any time. Its reset and expiration stay as they were when the key was created; for a different reset, create a new key.
 
 - Raising or clearing the limit lets the key's requests through again at once. What the key has used so far this period still counts.
-- Changing the reset starts the count again from zero, in a period that begins now.
 - Setting a limit on a key that had none starts its count from zero.
 
 ## How usage is counted
