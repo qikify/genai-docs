@@ -140,7 +140,11 @@ If you switch to **Configuration** while a sequence is still active, the fields 
 
 Reloading or leaving the page clears the workspace configuration and results. Submitted tasks remain accessible in **Task History**.
 
-## Related guides
+## Next steps
+
+Start with two or three values per variable. Check **Prompt Preview**, adjust **Run order**, and run a small batch to review the images before adding more values. When your combinations exceed 250 images, use **Run next** to continue and download the successful images from each results page.
+
+To explore other ImagenHub workflows:
 
 - [Templates](./templates.md) for reusable prompts and model defaults.
 - [Batch Editor](./batch-editor.md) for applying image edits to a collection of files.
