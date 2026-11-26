@@ -1,151 +1,169 @@
 # Variable Runner
 
-Use a saved prompt template to generate images for every combination of your batch values. Choose up to four variables to vary, keep the other prompt values and model settings fixed, and download the results for each run.
+Use Variable Runner to run a saved template with different values for several prompt variables at once. For example, a template can have `color`, `style`, and `background` variables. Put their values in a table, with one column per variable. Each row uses those values together to make one image.
 
-For example, three mug colors, two photography styles, and two scenes give you **3 × 2 × 2 = 12 images**. With one batch variable, three values give you three images.
+You can use up to **4 batch variables** per template. Three rows with the colors `red`, `blue`, and `green` make **3 images**. You can also change the style and background in each row.
+
+Variable Runner works with both **text-to-image** and **image-to-image** templates.
 
 ## Before you start
 
-Sign in to ImagenHub and open **Batch → Variable Runner**. You can run the batch from this page without entering an API key.
+Sign in and open **Batch → Variable Runner**.
 
-- Have a saved [template](./templates.md) of your own. Choose a text-to-image or image-to-image model that accepts a text prompt. A model with an optional prompt input also works, but Variable Runner still needs prompt text to run.
-- Make sure your organization role allows you to run tasks. If you use an image-to-image template, have its required input and reference images ready.
+- Have a saved [template](./templates.md) that uses a text-to-image or image-to-image model with a prompt field.
+- Your account needs permission to run tasks. If the model needs an input image, have that image ready.
 
 ## 1. Choose a template
 
-Search for and select a saved template under **Prompt template**. The page loads its prompt and **Model settings**. Click **View template** to inspect the saved version. Changes you make in Variable Runner apply to the batch and leave the saved template as it is.
+Select your template under **Prompt template**. Its prompt and model settings load into the page. **View template** opens the saved template.
 
-Review the output size, quality, and any required images under **Model settings**. All combinations use the same model settings and images. Switching to a different template clears your batch value lists and loads the new prompt and settings.
+Check **Model settings** for the image size, quality, and any required input images. These settings apply to every row.
 
-![Model settings for an image-to-image template with an input image, image size, and quality.](./assets/vr-image-settings.png)
+![Model settings with an input image, image size, and quality.](./assets/vr-image-settings.png)
 
-![Variable Runner with the Ceramic Mug Studio template and its detected batch variables.](./assets/vr-configuration.png)
+Edits here apply to this batch. To switch templates, use the template picker again. Switching templates clears the current table.
+
+![The Mug colors template with three variable columns and an empty first row.](./assets/vr-configuration.png)
 
 ## 2. Set up your batch variables
 
-Wrap each part of the prompt you want to vary in double braces. For example:
+A variable marks a part of the prompt you want to change. Put its name inside double braces:
 
 ```text
-Product photo of a {{color}} ceramic mug in a {{style}} style, on a {{Background Scene}} set, lit with {{lighting}}.
+A {{color}} mug. {{style}}. {{background}} background. Soft light.
 ```
 
-Variable Runner detects distinct placeholders when you load a template or edit the prompt. It adds up to four as batch variables. If a placeholder appears more than once, each occurrence uses the same value for that image.
+The page finds `color`, `style`, and `background` and adds a column for each one. You can have up to **4 batch variables**. Fill the first row yourself, even if the template already has default values.
 
-You can also create a variable manually:
+To add a variable using the form:
 
-1. Click **Add batch variable**, enter a name, and click **Create variable**. Names can contain spaces between words, as in `Background Scene`. Start with a letter or underscore and use letters, numbers, underscores, or spaces.
-2. Place the cursor in **Prompt text** and click **Add to cursor**, or use **Copy placeholder** and paste it. Creating a variable manually adds its name to the list. Its placeholder needs to be in the prompt for its values to affect the run.
-3. To rename a variable, select it, edit its name, and click **Update**. The matching placeholders in the prompt update too.
+1. Click **Add batch variable**.
+2. Enter a name such as `size` and click **Create**.
+3. Type <code v-pre>{{size}}</code> into the prompt where you want its value to appear.
+
+Start names with a letter or underscore. You can use letters, numbers, underscores, and spaces between words.
+
+![The prompt with color, style, and background variables, and the form for adding size.](./assets/vr-prompt-variables.png)
 
 ### Keep a variable fixed
 
-To use the same lighting for every image, select `lighting` in the list of batch variables and click **Remove**. The `{{lighting}}` placeholder stays in the prompt. Hover over or click it in the prompt editor and enter `soft window light`, or keep the saved default if it already has one. Fill in a value for every fixed placeholder used in the prompt.
+Write shared instructions directly in the prompt. For example, `Soft light.` applies to every row.
 
-![The lighting placeholder set to soft window light as a fixed value.](./assets/vr-fixed-variable.png)
+If the prompt has more than four variables, the extra ones need one fixed value. Click or hover over an extra variable in the prompt and enter its value.
 
-## 3. Enter or import values for each variable
+## 3. Enter or import values in the table
 
-Use **Edit values for** to select a batch variable. In **Variable values**, enter one value per line or import a file. Then select the next variable and repeat. Each variable keeps its own list when you switch between them.
+Fill in the cells under **Variable values**. Click **Add row** to add another image. Click a cell to edit it, or the trash button to delete its row.
 
-| Variable | Example values, one per line |
-| --- | --- |
-| `color` | terracotta<br>sage green<br>navy blue |
-| `style` | editorial<br>minimalist |
-| `Background Scene` | warm ivory<br>pale blue |
+Try these values:
 
-The count updates as you type or import. In this example, **Variable values** shows `3 × 2 × 2 = 12 images`, with one image planned for each combination. Repeated values count as separate entries. If a batch variable used in the prompt has no values yet, add at least one before running.
+| Row | `color` | `style` | `background` |
+| --- | --- | --- | --- |
+| 1 | red | photo | white |
+| 2 | blue | photo | white |
+| 3 | green | photo | white |
 
-A value list can exceed **250 values**. The **250-image limit applies to each run**. If your total exceeds that limit, the notice tells you how many images will run next and how many will remain afterward.
+This makes a red mug, a blue mug, and a green mug. All three are photos on a white background.
 
-![The Edit values for selector and a calculation of 3 × 2 × 2 = 12 images.](./assets/vr-variable-values.png)
+Fill in every cell. If a required value is missing, clicking **Run** shows the row and variable to fix. Repeated rows still make separate images.
 
-### Import a TXT or JSON list
+You can add more than **250 rows**. Each run makes up to **250 images**. Use **Run next** for the rows left over.
 
-Select the variable you want to fill, then click **Import TXT / JSON**. The import replaces that variable's active list. Click **Use manual input** to restore its previous manual entries. If an import fails, the current list stays available.
+![Three rows containing red, blue, and green, with photo and white in the other columns.](./assets/vr-variable-values.png)
 
-| Format | How values are read |
-| --- | --- |
-| Manual input or TXT | One value per line. Empty lines are skipped, and commas stay inside a value. |
-| JSON | An array of non-empty strings. Each string is one value and can include commas or line breaks. |
+### Import a CSV file
 
-For example, save this as a JSON file to give `style` two values. The first value contains a line break:
+Prepare your table in a spreadsheet and save it as a comma-separated `.csv` file. The first row must contain your batch variable names. Each row below it makes one image.
 
-```json
-[
-  "editorial, natural textures\nsoft shadows",
-  "minimalist, clean lines"
-]
+For the example above, save this as `mug-values.csv`:
+
+```csv
+color,style,background
+red,photo,white
+blue,photo,white
+green,photo,white
 ```
 
-Use a text file up to 1 MiB. Open **File formats** for examples. The import panel shows up to six entries from the file.
+Click **Import CSV** and choose the file. This replaces the current table. Click **CSV format** to see an example.
 
-![Two style values imported from JSON, with the first value spanning two lines.](./assets/vr-json-import.png)
+| Check | Rule |
+| --- | --- |
+| File size | Up to 1 MiB. |
+| Columns | Include each batch variable once, with up to 4 columns. The column order can differ from the table. |
+| Column names | Use the same names as your variables. `COLOR` also matches `color`. If you have both `color` and `Color`, match their spelling exactly. |
+| Values | Fill every column. Empty rows are skipped. |
+| Commas or line breaks inside a value | Put double quotes around the value. Write a quote inside it as `""`. |
 
-## 4. Choose the run order
+If the file has an error, read the message, fix the file, and import it again. Your current table stays in place until the import succeeds.
 
-When you have two or more batch variables, look for **Run order** below **Variable values**. Open the dropdown beside a variable and assign it a position such as **First** or **Second**. The other variables shift to make room.
+![The three imported rows and the CSV format example.](./assets/vr-csv-import.png)
 
-For each value of the first variable, Variable Runner tries all combinations of the variables below it. The last variable changes fastest, and the values within each variable follow the order you entered them. Changing the order keeps the total image count the same and changes which images are processed first.
+## 4. Check the row order
 
-![The Run order dropdown showing First, Second, and Third for the Background Scene variable.](./assets/vr-run-order.png)
+Rows run from top to bottom. In this example, the order is:
 
-| Image | `color` → `style` → `Background Scene` | `Background Scene` → `color` → `style` |
-| --- | --- | --- |
-| 1 | terracotta · editorial · warm ivory | warm ivory · terracotta · editorial |
-| 2 | terracotta · editorial · pale blue | warm ivory · terracotta · minimalist |
-| 3 | terracotta · minimalist · warm ivory | warm ivory · sage green · editorial |
+| Row | Image |
+| --- | --- |
+| 1 | Red mug |
+| 2 | Blue mug |
+| 3 | Green mug |
 
-Put a variable first when you want to see everything for its first value before moving to the next. For example, put `Background Scene` first to review all colors and styles for `warm ivory` before moving to `pale blue`.
+To change the order, move the rows in your spreadsheet and import the CSV again. You can also enter them in the order you want using **Add row**.
+
+Click a row to see its prompt below the table. Clicking row 3 shows the green mug prompt. **Run** still starts from row 1.
+
+![Row 3 selected, with the green mug prompt below the table.](./assets/vr-row-order.png)
 
 ## 5. Preview and run
 
-**Prompt Preview** shows the first five combinations in the upcoming run, or all of them if that run contains fewer than five. Check the values for each image and expand **View prompt** to read the full prompt, including fixed values.
+Check **Prompt Preview** before running. It shows the full prompt for the selected row. Click another row to check that one. If you edit a cell, its preview updates as you type.
 
-![The first five combinations with View prompt expanded on the first image.](./assets/vr-values-preview.png)
+![Row 2 of 3 with the prompt A blue mug. photo. white background. Soft light.](./assets/vr-values-preview.png)
 
-1. Check **Generate images** for the total planned and **Run · N images** for the next run's size and credit estimate.
-2. Click **Run**. In **Run this batch?**, check the image count and estimated generation total. If the template uses post-processing, review the notice about separate charges.
-3. Click **Confirm and run**. The page opens **Results**. Keep the page open while the run processes up to five tasks at a time.
+1. Check the image count and credit estimate beside **Run**.
+2. Click **Run**. Check the count and estimate in **Run this batch?**. Post-processing, if used by the template, has separate charges.
+3. Click **Confirm and run**. The page opens **Results**. Keep it open while the images are being made. Up to five tasks can run at once.
 
-![Run this batch confirmation showing 250 images and the estimated generation total.](./assets/vr-confirm-run.png)
+![Confirmation for a run of up to 250 images.](./assets/vr-confirm-run.png)
 
-With no batch placeholders in use, a valid prompt and template can run as a single image.
+A prompt with no batch variables makes one image.
 
-### Continue a batch with more than 250 images
+### Continue a batch with more than 250 rows
 
-For example, **260 colors × 2 styles = 520 images**. **Run** starts the first 250. When that run finishes, click **Run next** for the next 250, then **Run next** again for the final 20. Each run starts where the previous one left off and uses the same prompt, values, order, and model settings. Check the remaining count before you continue.
+For **253 rows**, the first run makes **250 images**. When it finishes, click **Run next** to make the last **3 images**. The second run uses rows 251–253 from the same table.
 
-![A 260-image plan with a 250-image first run and 10 images remaining.](./assets/vr-run-limit.png)
+![253 rows planned, with 250 images in the next run and 3 left afterward.](./assets/vr-run-limit.png)
 
 ## 6. Review and download results by run
 
-Use the **Results page** dropdown or **Previous** and **Next** to switch between runs. Each page contains up to 250 results. The progress bar counts both successes and failures as completed tasks.
+Each run has its own results page. Use **Results page**, **Previous**, or **Next** to switch pages. Cards follow the row order. The progress bar counts finished tasks, including failures.
 
-- Click a successful image to open a larger preview, or **View task** to inspect the task.
-- Click **Download** on a card to save that image. **Download all from Run N** packages the successful images on the selected results page into a ZIP, up to 250 images per download. Switch pages and download each page separately to save the full sequence.
-- If you download while a run is in progress, the ZIP includes only the images that had succeeded when you clicked. Download again for images that finish later.
-- If an image fails, read its message and click **Retry** when available. If you see **Batch paused**, address the issue, open the paused run, and retry the failed task to let the queue continue. If status tracking was interrupted, retry checks the existing task before resubmitting it.
+- Click an image to see it larger. **View task** opens its task details.
+- Click **Download** on a card to save that image.
+- Click **Download all from Run N** to save the successful images on that page as a ZIP, up to 250 images. Switch pages to download another run.
+- If you download while images are still being made, the ZIP contains only those already finished. Download again for later results.
+- If a task fails, read its message and use **Retry** when available. If you see **Batch paused**, fix the reported problem and retry the failed task to continue. Retry checks an existing task before submitting it again when tracking was interrupted.
 
-![Run 2 of 2 with four result cards showing terracotta orange, sage green, navy blue, and mustard yellow mugs, and a button to download that run.](./assets/vr-results-queue.png)
+![Run 2 of 2 showing separate red, blue, and green mug images.](./assets/vr-results-queue.png)
 
-_In this example, the second run shows four sample images. Each mug matches the `color` value on its result card._
+_This example has 253 rows. Run 2 shows the last three rows, with a red, blue, and green mug._
 
 ## 7. Stop a sequence or change the configuration
 
-Download any results you want to keep before ending a sequence. In **Results**, click **Stop running remaining combinations** to discard the rest of the sequence and clear its results from this workspace. The button returns to **Run**, and the next run starts from the first combination.
+Save any images you want to keep first. Then click **Stop running remaining rows** in **Results**. This clears the current results and returns to **Configuration**. The next **Run** starts from row 1.
 
-If you switch to **Configuration** while a sequence is still active, the fields are locked. Click **Stop remaining combinations to edit** (or **End sequence to edit** when there are no remaining combinations) and review the confirmation. Any work already in progress uses its original configuration. After confirming, update your prompt, values, or order. Once the active run finishes, you can start a fresh run from the beginning.
+To edit while there are rows left, open **Configuration** and click **Stop remaining rows to edit**. Read the message and confirm. If all rows are already in the active run, the button says **End sequence to edit**.
 
-![Stop remaining combinations confirmation explaining that the sequence results will be cleared.](./assets/vr-stop-sequence.png)
+You can then edit the prompt, table, or model settings. Tasks already running keep their original settings. Wait for that run to finish before starting again.
 
-Reloading or leaving the page clears the workspace configuration and results. Submitted tasks remain accessible in **Task History**.
+![The Stop remaining rows confirmation.](./assets/vr-stop-sequence.png)
+
+Reloading or leaving the page clears the table and results. Submitted tasks are still in **Task History**.
 
 ## Next steps
 
-Start with two or three values per variable. Check **Prompt Preview**, adjust **Run order**, and run a small batch to review the images before adding more values. When your combinations exceed 250 images, use **Run next** to continue and download the successful images from each results page.
+Try the three rows above first. Check the prompts and images, then add more rows or import your own CSV. Use **Run next** when you have more than 250 rows.
 
-To explore other ImagenHub workflows:
-
-- [Templates](./templates.md) for reusable prompts and model defaults.
-- [Batch Editor](./batch-editor.md) for applying image edits to a collection of files.
-- [Dynamic Upload Ratio](./dynamic-upload-ratio.md) for templates that follow the shape of an input image.
+- [Templates](./templates.md) — save prompts and model settings.
+- [Batch Editor](./batch-editor.md) — edit several images together.
+- [Dynamic Upload Ratio](./dynamic-upload-ratio.md) — use the input image's shape in a template.
