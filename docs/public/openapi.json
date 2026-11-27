@@ -85,7 +85,7 @@
     "/images": {
       "post": {
         "summary": "Host an image",
-        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\nThe decoded upload limit is 10 MB for every transport.\n\nFor a large image, or from a network whose route to this API is slow,\nthe two-call upload starting at `POST /images/upload-url` sends the\nbytes straight to storage instead and returns the same reference.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process`, `/run/sync/{model_name}`, or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved, whether the path is used in\n`default_inputs` or as the template's `thumbnail_path`.\n\nUploaded images are re-encoded to JPEG, or to PNG when they carry\ntransparency, at their own size, and stripped of metadata. Each model\nsets the size its input images are sent at. The stored bytes will\ntherefore differ from what was sent, and `size_bytes` reports what was\nstored. Send `path`, never `url`, as the generation reference.\n",
+        "description": "Turn raw image bytes into a hosted reference a generation can consume.\n\nSend exactly one of `file` (multipart), `image_base64`, or `image_url`.\nSending none or more than one is rejected.\n\nThe decoded upload limit is 10 MB for every transport.\n\nFor a large image, or from a network whose route to this API is slow,\nthe two-call upload starting at `POST /images/upload-url` sends the\nbytes straight to storage instead and returns the same reference.\n\n**The reference is `path`, not `url`.** Persist `path` and send it back\nas an image input to `/process` or a template's\n`default_inputs`. `url` renders the image now and is a convenience only.\n\n**Uploads expire.** An upload is staging for inference, not storage:\nthe bytes are removed once the retention window in `expires_at` passes,\nwhether or not anything still references them. Keep your own original\nand upload again rather than treating this as a file store. Saving the\npath into a template is the exception — a template copies the image\ninto permanent storage when it is saved, whether the path is used in\n`default_inputs` or as the template's `thumbnail_path`.\n\nUploaded images are re-encoded to JPEG, or to PNG when they carry\ntransparency, at their own size, and stripped of metadata. Each model\nsets the size its input images are sent at. The stored bytes will\ntherefore differ from what was sent, and `size_bytes` reports what was\nstored. Send `path`, never `url`, as the generation reference.\n",
         "operationId": "uploadImage",
         "tags": [
           "Images"
@@ -657,11 +657,18 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Refused. As application/problem+json, the account cannot cover the run (see https://docs.imagenhub.ai/errors/insufficient-credits). As application/json, not authorized to use the specified template.",
+            "description": "Refused. As application/problem+json, the account cannot cover the run (see https://docs.imagenhub.ai/errors/insufficient-credits), or the API key has spent its credit limit for the period (see https://docs.imagenhub.ai/errors/key-limit-reached). As application/json, not authorized to use the specified template.",
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InsufficientCreditsProblem"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InsufficientCreditsProblem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/KeyLimitReachedProblem"
+                    }
+                  ]
                 }
               },
               "application/json": {
@@ -932,149 +939,10 @@
         }
       }
     },
-    "/run/sync/{model_name}": {
-      "post": {
-        "summary": "Run a model synchronously",
-        "deprecated": true,
-        "description": "**Deprecated.** This endpoint will be removed, on a date not set yet, and\nfrom then on answers `410 Gone`. Use `POST /process` with the model's\n`model_name` and `sync: true` instead, which waits the same way.\n\nSubmit a generation request and wait for it to complete before returning.\nReturns the output image URLs and task ID directly in the response.\nThe provider is selected automatically.\n\nModel names may contain slashes (e.g. `black-forest-labs/flux-schnell`).\n\n`webhook_url` is not accepted here and returns 422 — the result comes back\nin this response, so there is nothing to call back about. Use the async\n`POST /process` for a callback.\n",
-        "operationId": "runModelSync",
-        "tags": [
-          "Processing"
-        ],
-        "security": [
-          {
-            "apiKeyAuth": []
-          },
-          {
-            "jwtAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "model_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The model's name. May contain slashes.",
-            "example": "black-forest-labs/flux-schnell"
-          }
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "metadata": {
-                    "type": [
-                      "object",
-                      "null"
-                    ],
-                    "maxProperties": 25,
-                    "additionalProperties": {
-                      "type": [
-                        "string",
-                        "number",
-                        "boolean",
-                        "null"
-                      ],
-                      "maxLength": 500
-                    },
-                    "description": "Your own labels for this task: an order number, a campaign, the\ncustomer it belongs to. Accepted here as well as on\n`POST /process` — this response carries only the images, so read them\nback with `GET /tasks/{task}` or filter on them in `GET /tasks`.\n\nAt most 25 keys. Every value must be a scalar (string, number,\nboolean or null), and a string value is capped at 500 characters.\n\nReserved out of the model's input namespace: stripped before the\nbody is matched against the model's input schema, and never\nforwarded to the provider.\n",
-                    "example": {
-                      "partner": "teeinblue",
-                      "campaign_id": "cmp_12345"
-                    }
-                  }
-                },
-                "additionalProperties": {
-                  "description": "Dynamic input fields defined by the model's input schema.\nKeys and types vary per model.\n"
-                }
-              },
-              "example": {
-                "prompt": "A cat wearing a top hat",
-                "metadata": {
-                  "partner": "teeinblue",
-                  "campaign_id": "cmp_12345"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Generation completed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "task_id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "description": "The ID of the completed task."
-                    },
-                    "images": {
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "format": "uri"
-                      },
-                      "description": "Public URLs of the generated output images."
-                    }
-                  }
-                },
-                "example": {
-                  "task_id": "018f1a2b-3c4d-7e8f-9a0b-1c2d3e4f5a6b",
-                  "images": [
-                    "https://cdn.example.com/output/abc123.png"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/InsufficientCredits"
-          },
-          "404": {
-            "description": "Provider or model not found"
-          },
-          "422": {
-            "description": "Validation error or task processing failure",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "task_id": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "message": {
-                      "type": "string",
-                      "description": "Error detail from the provider."
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          }
-        }
-      }
-    },
     "/tasks": {
       "get": {
         "summary": "List tasks",
-        "description": "Returns the authenticated user's tasks, most recent first. Filter by\nstatus, template, model, or the labels you attached at creation to review\na batch. Returns a lightweight projection — use `GET /tasks/{task}` for a\ntask's inputs and output image URLs.\n",
+        "description": "Returns your requests, newest first, each as the Task `GET /tasks/{task}` returns. A request is a task you submitted: its post-processing steps and the tasks a workflow run makes are parts of it and are not listed. Filters on different fields all have to match, and a comma list in one field matches any of its values.\n\nPages go by cursor: pass `meta.next_cursor` back as `cursor` for the next page. There is no total.\n",
         "operationId": "listTasks",
         "tags": [
           "Processing"
@@ -1093,25 +961,19 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string",
-              "enum": [
-                "created",
-                "processing",
-                "success",
-                "error"
-              ]
+              "type": "string"
             },
-            "description": "Filter by task status"
+            "description": "Only these states, comma separated: `created`, `processing`, `success`, `error`.",
+            "example": "created,processing"
           },
           {
-            "name": "template_id",
+            "name": "post_processing_status",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             },
-            "description": "Filter by template UUID"
+            "description": "Only requests whose post-processing is in these states, comma separated: `pending`, `processing`, `success`, `failed`."
           },
           {
             "name": "model_id",
@@ -1120,7 +982,25 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Filter by AI model ID"
+            "description": "Only requests run on this model."
+          },
+          {
+            "name": "template_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only requests run from this template, by its UUID, or `none` for requests run without a template."
+          },
+          {
+            "name": "api_key_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Only requests made with this API key."
           },
           {
             "name": "metadata",
@@ -1144,14 +1024,33 @@
             }
           },
           {
+            "name": "created_after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Only requests created at or after this time."
+          },
+          {
+            "name": "created_before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Only requests created before this time."
+          },
+          {
             "name": "sort_by",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
               "enum": [
-                "created_at",
-                "updated_at"
+                "created_at"
               ],
               "default": "created_at"
             },
@@ -1172,17 +1071,6 @@
             "description": "Sort direction"
           },
           {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            },
-            "description": "Page number"
-          },
-          {
             "name": "per_page",
             "in": "query",
             "required": false,
@@ -1192,28 +1080,42 @@
               "maximum": 100,
               "default": 15
             },
-            "description": "Items per page"
+            "description": "Requests per page"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`meta.next_cursor` of the page before. Leave it out for the first page."
           }
         ],
         "responses": {
           "200": {
-            "description": "Paginated list of tasks",
+            "description": "One page of requests",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "required": [
+                    "data",
+                    "links",
+                    "meta"
+                  ],
                   "properties": {
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/TaskSummary"
+                        "$ref": "#/components/schemas/Task"
                       }
                     },
                     "links": {
-                      "$ref": "#/components/schemas/PaginationLinks"
+                      "$ref": "#/components/schemas/CursorPaginationLinks"
                     },
                     "meta": {
-                      "$ref": "#/components/schemas/PaginationMeta"
+                      "$ref": "#/components/schemas/CursorPaginationMeta"
                     }
                   }
                 }
@@ -1222,6 +1124,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "A filter or the page size is out of range"
           }
         }
       }
@@ -1229,7 +1134,7 @@
     "/tasks/{task}": {
       "get": {
         "summary": "Get task status",
-        "description": "Returns the current status of a task. When status is `success`, the `output` field contains CDN URLs to generated images. The URLs do not expire. An API run's images are deleted once the retention window passes, and `output_expired` then says so.\n\n`logs` and `attempts` show how the run went: each provider it called, and whether it switched to its template's fallback, which `fallback_from` then names.\n",
+        "description": "Returns the task. When status is `success`, `output` holds CDN links to the generated images. An API run's images are deleted once the retention window passes, at `output_expires_at`, and their places in `output` then hold `null`.\n",
         "operationId": "getTask",
         "tags": [
           "Processing"
@@ -1342,7 +1247,7 @@
     "/tasks/{task}/stream": {
       "get": {
         "summary": "Stream task status (SSE)",
-        "description": "Server-Sent Events stream for real-time task status updates.\nEach event contains a JSON-encoded task object. The stream\ncloses when the task reaches `success` or `error` status.\n\nThe `success` event carries `output`, CDN URLs of the output\nimages, and `output_paths`, the storage keys of the same images in\nthe same order. A key can be sent as a template's `thumbnail_source`.\n",
+        "description": "Server-Sent Events stream of a task's changes. Each change is an event named `task`, whose data is the Task as it stands, the same object `GET /tasks/{task}` returns. Listen with `addEventListener('task', …)`. The stream closes after the event whose `status` is `success` or `error`.\n\n**Deprecated, removed on 2027-01-18:** each `task` event is followed by an unnamed event, the one `onmessage` receives, carrying `status`, `post_processing_status`, `billing_source` and `credit_cost`, and on success `output` and `output_paths`, on failure `message`. Read the `task` event instead: `object.output` for the links, and an output's link where a storage key was sent, such as a template's `thumbnail_source`.\n",
         "operationId": "streamTask",
         "tags": [
           "Processing"
@@ -2942,7 +2847,7 @@
     "/analytics/requests/filters": {
       "get": {
         "summary": "Get request filter options",
-        "description": "Returns available filter values (model names and provider names)\nfor the authenticated user's request history. Useful for populating\nfilter dropdowns in the UI.\n",
+        "description": "Returns the model and provider names the request log can be filtered\nby: every model in your catalogue and every provider, whether or not\nyou have used them. Useful for populating filter dropdowns in the UI.\n",
         "operationId": "getAnalyticsRequestFilters",
         "tags": [
           "Analytics"
@@ -2970,7 +2875,7 @@
                         "black-forest-labs/flux-dev",
                         "stability-ai/stable-diffusion-xl"
                       ],
-                      "description": "Unique model names from past requests"
+                      "description": "Model names in your catalogue, hidden models included"
                     },
                     "providers": {
                       "type": "array",
@@ -2978,11 +2883,11 @@
                         "type": "string"
                       },
                       "example": [
-                        "openai",
-                        "fal",
-                        "replicate"
+                        "OpenAI",
+                        "fal.ai",
+                        "Replicate"
                       ],
-                      "description": "Unique provider names from past requests"
+                      "description": "Provider display names"
                     }
                   }
                 }
@@ -3352,58 +3257,39 @@
                     "example": "2026-08-13T09:14:22+00:00"
                   },
                   "data": {
-                    "type": "object",
-                    "description": "Every key is always present, null where it does not apply.",
-                    "properties": {
-                      "task_id": {
-                        "type": "string",
-                        "format": "uuid"
+                    "description": "The Task, the same object `GET /tasks/{task}` returns. Beside it, three keys this event carried before, which the Task does not have, are still sent and removed on 2027-01-18. Before 2026-11, `data` was a summary with `model` and `error` as text; they are now the Task's objects.\n",
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/Task"
                       },
-                      "url": {
-                        "type": "string",
-                        "format": "uri",
-                        "description": "The task resource. Follow it for authoritative current state,\nor ignore it and act on this payload — both are supported.\n",
-                        "example": "https://api.imagenhub.ai/api/tasks/019d29c5-9663-71c4-b698-9cbf898948d4"
-                      },
-                      "status": {
-                        "type": "string",
-                        "enum": [
-                          "success",
-                          "error"
-                        ]
-                      },
-                      "post_processing_status": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "description": "`failed` when a post-processing step failed on a run that still\nproduced an image. The event is still `task.succeeded`, because\nyou did get output — this is how you learn it is not the output\nyou asked for.\n"
-                      },
-                      "model": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "output": {
-                        "type": [
-                          "array",
-                          "null"
-                        ],
-                        "items": {
-                          "type": "string",
-                          "format": "uri"
-                        },
-                        "description": "Result URLs. Null on failure."
-                      },
-                      "error": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "description": "Why it failed. Null on success."
+                      {
+                        "type": "object",
+                        "properties": {
+                          "task_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "deprecated": true,
+                            "description": "Removed on 2027-01-18. Use `id`."
+                          },
+                          "url": {
+                            "type": "string",
+                            "format": "uri",
+                            "deprecated": true,
+                            "description": "Removed on 2027-01-18. `GET /tasks/{id}` gives the task's current state.",
+                            "example": "https://api.imagenhub.ai/api/tasks/019d29c5-9663-71c4-b698-9cbf898948d4"
+                          },
+                          "template_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "uuid",
+                            "deprecated": true,
+                            "description": "Removed on 2027-01-18. Use `template.id`."
+                          }
+                        }
                       }
-                    }
+                    ]
                   }
                 }
               },
@@ -3412,15 +3298,40 @@
                 "type": "task.succeeded",
                 "occurred_at": "2026-08-13T09:14:22+00:00",
                 "data": {
-                  "task_id": "019d29c5-9663-71c4-b698-9cbf898948d4",
-                  "url": "https://api.imagenhub.ai/api/tasks/019d29c5-9663-71c4-b698-9cbf898948d4",
+                  "id": "019d29c5-9663-71c4-b698-9cbf898948d4",
                   "status": "success",
                   "post_processing_status": null,
-                  "model": "black-forest-labs/flux-schnell",
+                  "model": {
+                    "id": 12,
+                    "name": "black-forest-labs/flux-schnell",
+                    "display_name": "FLUX.1 [schnell]",
+                    "owner": null
+                  },
+                  "template": null,
+                  "input": {
+                    "prompt": "a red fox in the snow"
+                  },
                   "output": [
                     "https://cdn.imagenhub.ai/outputs/019d29c5/0.png"
                   ],
-                  "error": null
+                  "output_expires_at": "2026-09-12T09:14:22Z",
+                  "thumbnail_url": null,
+                  "error": null,
+                  "fallback_from": null,
+                  "total_credit_cost": 4,
+                  "byok_fee": 0,
+                  "billing_source": "system",
+                  "api_key": {
+                    "id": 7,
+                    "name": "prod-key"
+                  },
+                  "metadata": null,
+                  "created_at": "2026-08-13T09:14:10Z",
+                  "started_at": "2026-08-13T09:14:11Z",
+                  "ended_at": "2026-08-13T09:14:22Z",
+                  "task_id": "019d29c5-9663-71c4-b698-9cbf898948d4",
+                  "url": "https://api.imagenhub.ai/api/tasks/019d29c5-9663-71c4-b698-9cbf898948d4",
+                  "template_id": null
                 }
               }
             }
@@ -3538,6 +3449,64 @@
           "balance": 3,
           "cost": 10,
           "overage_limit": 0
+        }
+      },
+      "KeyLimitReachedProblem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "description": "The key's credit limit for each period",
+                "example": 1000
+              },
+              "used": {
+                "type": "integer",
+                "description": "Credits the key has spent in the current period",
+                "example": 1000
+              },
+              "cost": {
+                "type": "integer",
+                "description": "What the run would have cost",
+                "example": 10
+              },
+              "period": {
+                "type": "string",
+                "enum": [
+                  "daily",
+                  "weekly",
+                  "monthly",
+                  "never"
+                ],
+                "description": "How often the key's count starts again from zero, at midnight UTC; never means a total for the key's life",
+                "example": "monthly"
+              },
+              "resets_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "When the count starts again and the key works again; null for never",
+                "example": "2026-12-01T00:00:00Z"
+              }
+            }
+          }
+        ],
+        "example": {
+          "type": "https://docs.imagenhub.ai/errors/key-limit-reached",
+          "title": "Key limit reached",
+          "status": 403,
+          "detail": "This API key has used 1,000 of its 1,000 credits this month. It resets at 2026-12-01T00:00:00Z.",
+          "limit": 1000,
+          "used": 1000,
+          "cost": 10,
+          "period": "monthly",
+          "resets_at": "2026-12-01T00:00:00Z"
         }
       },
       "DailyLimitReachedProblem": {
@@ -3898,35 +3867,34 @@
       },
       "Task": {
         "type": "object",
+        "description": "A generation request, the same on every endpoint that returns one, on MCP and in webhooks. Every key below is present on every reply, `null` or `[]` where there is no value yet.\n\nKeys marked deprecated are the ones a task carried before this shape. They are still sent, with the values they had, and removed on 2027-01-18. Each says what to read instead.\n",
+        "required": [
+          "id",
+          "status",
+          "post_processing_status",
+          "model",
+          "template",
+          "workflow_run",
+          "input",
+          "output",
+          "output_expires_at",
+          "thumbnail_url",
+          "error",
+          "fallback_from",
+          "total_credit_cost",
+          "byok_fee",
+          "billing_source",
+          "api_key",
+          "metadata",
+          "created_at",
+          "started_at",
+          "ended_at"
+        ],
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid",
             "example": "019d29c6-a50d-7340-a521-22ef5d1a4bb6"
-          },
-          "user_id": {
-            "type": "integer",
-            "example": 1
-          },
-          "personal_access_token_id": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "description": "API key ID used for this task (null if created via JWT)",
-            "example": 1
-          },
-          "model_id": {
-            "type": "integer",
-            "example": 1
-          },
-          "template_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uuid",
-            "example": "019d29c5-9663-71c4-b698-9cbf898948d4"
           },
           "status": {
             "type": "string",
@@ -3936,48 +3904,21 @@
               "success",
               "error"
             ],
-            "example": "created"
+            "example": "success"
           },
-          "input": {
-            "type": "object",
-            "description": "Processed input sent to the provider"
-          },
-          "metadata": {
+          "post_processing_status": {
             "type": [
-              "object",
+              "string",
               "null"
             ],
-            "description": "Labels attached when the task was created, `null` when none were sent. A\ntask that runs as a step of a chain carries the labels of the run that\nstarted it.\n",
-            "additionalProperties": {
-              "type": [
-                "string",
-                "number",
-                "boolean",
-                "null"
-              ]
-            },
-            "example": {
-              "partner": "teeinblue",
-              "campaign_id": "cmp_12345"
-            }
-          },
-          "output": {
-            "type": [
-              "array",
-              "null"
+            "enum": [
+              "pending",
+              "processing",
+              "success",
+              "failed",
+              null
             ],
-            "description": "CDN URLs to generated images (only present on success)",
-            "items": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "format": "uri"
-            }
-          },
-          "output_expired": {
-            "type": "boolean",
-            "description": "True once the retention window has deleted an output image; its place in `output` holds null."
+            "description": "How the request's post-processing steps went, `null` when it has none. `failed` on a `success` task means the generation was delivered but a step after it failed."
           },
           "model": {
             "type": [
@@ -3985,6 +3926,12 @@
               "null"
             ],
             "description": "The model the task ran on. After a switch to the template's fallback, this is the fallback's model.",
+            "required": [
+              "id",
+              "name",
+              "display_name",
+              "owner"
+            ],
             "properties": {
               "id": {
                 "type": "integer",
@@ -4014,12 +3961,107 @@
               }
             }
           },
-          "message": {
+          "template": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The template the task ran from, `null` for a freeform task.",
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "workflow_run": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The workflow run whose node made this task, `null` for a task you submitted. `GET /runs/{id}` returns the run.",
+            "required": [
+              "id",
+              "node_id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "node_id": {
+                "type": "string",
+                "description": "The node of the run's workflow that made the task."
+              }
+            }
+          },
+          "input": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The inputs the request sent, `_variables` included."
+          },
+          "output": {
+            "type": "array",
+            "description": "CDN links to the generated images, `[]` until status is `success`. An image deleted by the retention window keeps its place as `null`.",
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uri"
+            }
+          },
+          "output_expires_at": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Why the task failed, `null` unless status is `error`."
+            "format": "date-time",
+            "description": "When the output images are deleted, `null` when they are kept. An API run's images are kept 30 days."
+          },
+          "thumbnail_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "A small preview of the output, for grids, `null` until it is made."
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Why the task failed, `null` unless status is `error`.",
+            "required": [
+              "type",
+              "message"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "platform_fault",
+                  "user_refusal",
+                  "resource_exhausted"
+                ],
+                "description": "What to do about it, a list that stays fixed:\n- `platform_fault`: we failed the request. Retry it.\n- `user_refusal`: the model or our input check declined it. Change the input.\n- `resource_exhausted`: credits, the plan's daily limit or your provider key ran out. Fix the account.\n"
+              },
+              "message": {
+                "type": "string",
+                "description": "The reason, for people. Its wording can change; branch on `type`.",
+                "example": "The model refused the prompt on content grounds."
+              }
+            }
           },
           "fallback_from": {
             "type": [
@@ -4042,126 +4084,201 @@
               }
             }
           },
-          "logs": {
-            "type": "array",
-            "description": "The run's log, oldest first. Returned by `GET /tasks/{task}` only.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "level": {
-                  "type": "string",
-                  "enum": [
-                    "info",
-                    "warn",
-                    "error"
-                  ],
-                  "example": "warn"
-                },
-                "message": {
-                  "type": "string",
-                  "example": "provider replicate timed out after 120s"
-                },
-                "created_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "example": "2026-10-27T03:22:01+00:00"
-                }
+          "total_credit_cost": {
+            "type": "integer",
+            "description": "Credits the request cost, its post-processing steps included, net of refunds.",
+            "example": 15
+          },
+          "byok_fee": {
+            "type": "number",
+            "description": "The fee in credits the request paid for running on your own provider key, its steps included. 0 on our keys.",
+            "example": 0
+          },
+          "billing_source": {
+            "type": "string",
+            "enum": [
+              "byok",
+              "system",
+              "fallback"
+            ],
+            "description": "Whose key the request was charged on. `fallback` when a run priced on your key went through ours."
+          },
+          "api_key": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The API key that started the task, `null` for one started in the portal or with a deleted key.",
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 7
+              },
+              "name": {
+                "type": "string",
+                "example": "prod-key"
               }
             }
           },
-          "attempts": {
-            "type": "array",
-            "description": "Every call made to a provider for this run, its post-processing steps included, in the order they were sent. Returned by `GET /tasks/{task}` only.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "task_id": {
-                  "type": "string",
-                  "format": "uuid",
-                  "description": "The task the call belongs to, this one or one of its post-processing steps."
-                },
-                "chain_step": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "description": "The post-processing step's number, `null` for the generation itself.",
-                  "example": null
-                },
-                "provider": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "example": "Replicate"
-                },
-                "model": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "description": "The model this call ran.",
-                  "example": "google/gemini-2.5-flash-image/edit"
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "success",
-                    "user_error",
-                    "error"
-                  ],
-                  "example": "success"
-                },
-                "status_code": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "description": "The provider's HTTP status.",
-                  "example": 200
-                },
-                "billing_source": {
-                  "type": "string",
-                  "enum": [
-                    "byok",
-                    "system"
-                  ],
-                  "description": "`byok` when the call used your own provider key.",
-                  "example": "system"
-                },
-                "credit_cost": {
-                  "type": "integer",
-                  "description": "Credits charged for this call. A failed call and a call on your own key cost 0."
-                },
-                "duration": {
-                  "type": "string",
-                  "description": "Seconds the call took, as a decimal string.",
-                  "example": "12.4031"
-                },
-                "sent_at": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "format": "date-time"
-                },
-                "ended_at": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "format": "date-time"
-                }
-              }
+          "metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Labels attached when the task was created, `null` when none were sent. A\ntask that runs as a step of a chain carries the labels of the run that\nstarted it.\n",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "example": {
+              "partner": "teeinblue",
+              "campaign_id": "cmp_12345"
             }
           },
           "created_at": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-11-11T09:21:58Z"
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the task moved to `processing`, `null` before."
+          },
+          "ended_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the task last reached `success` or `error`, `null` before."
+          },
+          "user_id": {
+            "type": "integer",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. The task is always your own account's."
+          },
+          "personal_access_token_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `api_key.id`."
+          },
+          "model_id": {
+            "type": "integer",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `model.id`."
+          },
+          "template_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `template.id`."
+          },
+          "credit_cost": {
+            "type": "integer",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. This task's own charge, its post-processing steps left out. Use `total_credit_cost`, the request's whole cost."
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `error.message`."
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `error.message`."
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `error.type`."
+          },
+          "thumbnail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `thumbnail_url`."
+          },
+          "root_task_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. A post-processing step's request; steps are not listed as tasks of their own."
+          },
+          "chain_step": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "deprecated": true,
+            "description": "Removed on 2027-01-18."
+          },
+          "node_run_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `workflow_run`."
           },
           "updated_at": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `ended_at`."
+          },
+          "output_expired": {
+            "type": "boolean",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `output_expires_at`."
+          },
+          "children": {
+            "type": "array",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. The request's post-processing steps; `total_credit_cost` and `byok_fee` already include them."
+          },
+          "children_credit_cost": {
+            "type": "integer",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Included in `total_credit_cost`."
+          },
+          "images": {
+            "type": "array",
+            "deprecated": true,
+            "description": "Removed on 2027-01-18. Use `input` for the images sent and `output` for the results."
           }
         }
       },
@@ -4735,88 +4852,6 @@
           }
         }
       },
-      "TaskSummary": {
-        "type": "object",
-        "description": "Lightweight task representation for listings (excludes inputs and resolved output URLs; use `GET /tasks/{task}` for those)",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "created",
-              "processing",
-              "success",
-              "error"
-            ]
-          },
-          "template_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uuid",
-            "description": "Template the task was generated from, or null for direct model runs"
-          },
-          "credit_cost": {
-            "type": "integer",
-            "description": "Credits charged for this task"
-          },
-          "metadata": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "description": "Labels attached when the task was created, `null` when none were sent",
-            "additionalProperties": {
-              "type": [
-                "string",
-                "number",
-                "boolean",
-                "null"
-              ]
-            },
-            "example": {
-              "partner": "teeinblue",
-              "campaign_id": "cmp_12345"
-            }
-          },
-          "message": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Error message when status is `error`"
-          },
-          "model": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              },
-              "name": {
-                "type": "string"
-              },
-              "display_name": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            }
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "TemplateSummary": {
         "type": "object",
         "description": "Lightweight template representation for listings (excludes default_inputs, extra_input, and full model details)",
@@ -5356,11 +5391,18 @@
         }
       },
       "InsufficientCredits": {
-        "description": "The account cannot cover the credit cost of the run. See https://docs.imagenhub.ai/errors/insufficient-credits",
+        "description": "The account cannot cover the credit cost of the run (see https://docs.imagenhub.ai/errors/insufficient-credits), or the API key has spent its credit limit for the period (see https://docs.imagenhub.ai/errors/key-limit-reached).",
         "content": {
           "application/problem+json": {
             "schema": {
-              "$ref": "#/components/schemas/InsufficientCreditsProblem"
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/InsufficientCreditsProblem"
+                },
+                {
+                  "$ref": "#/components/schemas/KeyLimitReachedProblem"
+                }
+              ]
             }
           }
         }
